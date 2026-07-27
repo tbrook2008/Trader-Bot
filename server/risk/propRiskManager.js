@@ -21,22 +21,24 @@
 const DAILY_LOSS_LIMIT = 1000;
 
 // Symbol-specific risk budget per trade
+// EMERGENCY BUFFER MODE: Account at $48,400 with $400 MLL buffer.
+// Max $150/trade risk = 2 consecutive losers still leaves $100 above MLL.
 const RISK_PER_TRADE_MAP = {
-  // Standard contracts — bigger per-trade budget, 1 contract at a time
-  'GC':  500,   // Gold:      $100/pt — 1 contract at $500 risk = 5-pt stop max
-  'NQ':  400,   // Nasdaq:    $20/pt  — 1 contract at $400 risk = 20-pt stop max
-  'ES':  400,   // S&P 500:   $50/pt  — 1 contract at $400 risk = 8-pt stop max
-  'CL':  400,   // Crude Oil: $1000/pt — rarely viable but mapped
+  // Standard contracts — not trading these during buffer recovery
+  'GC':  150,
+  'NQ':  150,
+  'ES':  150,
+  'CL':  150,
 
-  // Micro contracts — $250 budget, multi-contract sizing
-  'MGC': 250,
-  'MNQ': 250,
-  'MES': 250,
-  'MYM': 250,
-  'M2K': 250,
-  'MCL': 250,
+  // Micro contracts — $150 hard cap while MLL buffer is thin
+  'MGC': 150,
+  'MNQ': 150,
+  'MES': 150,
+  'MYM': 150,
+  'M2K': 150,
+  'MCL': 150,
 };
-const RISK_PER_TRADE = 250; // default fallback
+const RISK_PER_TRADE = 150; // default fallback
 
 // Dollar value per 1 point of price movement, per contract
 const FUTURES_RISK_MULTIPLIERS = {
@@ -87,8 +89,9 @@ function calculatePositionSize(symbol, entryPrice, stopLossPrice) {
   // If stop is too wide even for 1 contract, skip the trade
   if (qty <= 0) return 0;
 
-  // Topstep hard cap: 5 contracts per position
-  const MAX_CONTRACTS = 5;
+  // Hard cap: 4 contracts max in emergency buffer mode.
+  // Normal max is 5, but with $400 MLL buffer we keep it tight.
+  const MAX_CONTRACTS = 4;
   return Math.min(qty, MAX_CONTRACTS);
 }
 

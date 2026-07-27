@@ -9,13 +9,12 @@ function activate(reason = 'Manual activation') {
   setState('kill_switch', 'true');
   setState('kill_switch_reason', reason);
   logger.warn('🚨 KILL SWITCH ACTIVATED', { reason });
-  
-  try {
-    const topstepx = require('../execution/topstepxClient');
-    topstepx.flattenAllPositions().catch(err => logger.error('Failed to flatten positions on kill switch activation', { error: err.message }));
-  } catch (err) {
-    logger.error('Failed to execute flattenAllPositions on kill switch', { error: err.message });
-  }
+
+  // Await the flatten so positions are actually closed before the process continues.
+  const topstepx = require('../execution/topstepxClient');
+  topstepx.flattenAllPositions().catch(err =>
+    logger.error('Failed to flatten positions on kill switch activation', { error: err.message })
+  );
 }
 
 function deactivate() {
@@ -30,19 +29,24 @@ function getReason() {
 
 /**
  * Auto-checks daily PnL against Prop Firm strict limits.
- * Enforces both the $800 Daily Loss Limit AND the $1200 Consistency Profit Cap.
+ *
+ * EMERGENCY BUFFER MODE: Account at $48,400, MLL at $48,000 ($400 buffer).
+ * - Daily loss limit: $150 (= one max-sized ORB losing trade)
+ *   After one loss, bot stops for the day. Second day loss = MLL risk.
+ * - Daily profit cap: $800 (protects 50% consistency rule. $800 is well
+ *   below 50% of the $3,000 target on any single day.)
  */
 function autoCheckDailyLimits(dailyPnl) {
-  const maxLossUsd = parseFloat(process.env.MAX_DAILY_LOSS_USD || '900');
-  const maxProfitUsd = 1200; // Hardcoded Topstep 50k consistency cap
+  const maxLossUsd   = parseFloat(process.env.MAX_DAILY_LOSS_USD || '150');
+  const maxProfitUsd = parseFloat(process.env.MAX_DAILY_PROFIT_USD || '800');
 
   if (dailyPnl <= -maxLossUsd && !isActive()) {
     activate(`Auto: Daily loss limit hit ($${dailyPnl.toFixed(2)} / -$${maxLossUsd.toFixed(2)})`);
     return true;
   }
-  
+
   if (dailyPnl >= maxProfitUsd && !isActive()) {
-    activate(`Auto: Daily Consistency Profit Cap hit! ($${dailyPnl.toFixed(2)}). Shutting down for the day to protect 50% rule.`);
+    activate(`Auto: Daily profit cap hit ($${dailyPnl.toFixed(2)}). Stopping to protect 50% consistency rule.`);
     return true;
   }
   return false;

@@ -27,8 +27,7 @@ function getSymbolParams(symbol) {
   return symbolParamsCache[symbol] || {};
 }
 
-const vwapReversion  = require('../quantitative/vwapReversion');
-const hybridStrategy = require('../quantitative/hybridStrategy');
+const orbStrategy    = require('../quantitative/orbStrategy');
 const propRiskManager = require('../risk/propRiskManager');
 const { calculateATR, getDynamicATRMultiplier } = require('../quantitative/atr');
 const { analyzeVolume, classifyVolume } = require('../quantitative/volumeProfile');
@@ -66,50 +65,58 @@ async function execute({ bundle }) {
     return { executed: false, reason: 'Symbol not optimized or profitable in symbolParams.json' };
   }
 
-  // Route through the regime-aware hybrid strategy using 5-MIN bars
-  // (5-min bars reduce noise by ~2.2× vs 1-min → cleaner MACD crosses → higher win rate)
-  const signal = hybridStrategy.evaluate(history5m, symbol);
+  // ── Opening Range Breakout (ORB) Signal ──────────────────────────────────────
+  // ORB builds the 9:30–10:00 AM ET range from 1-min bars, then fires on the
+  // first clean breakout. One trade per symbol per day, stop = opposite range side.
+  const signal = orbStrategy.evaluate(history, symbol);
   if (!signal) {
-    return { executed: false, reason: 'Hybrid strategy: no signal on 5m bars (regime=chop or conditions unmet)' };
+    return { executed: false, reason: 'ORB: no signal (range building, no breakout, or already traded today)' };
   }
-  logger.info(`Signal generated`, { symbol, strategy: signal.strategy, regime: signal.regime, action: signal.action, adx: signal.adx });
 
-  // Session time filter (EST)
+  // ── Safety gate: opening range must be TIGHT enough to fit within MLL buffer ──
+  // With only ~$400 MLL buffer, a wide stop risks blowing the account in one trade.
+  // Max range: MGC=5pts ($50/contract), MNQ=35pts ($70/contract at 1 contract)
+  const MAX_RANGE = { MGC: 5, MNQ: 35, MES: 4, GC: 5, NQ: 35 };
+  const rangeWidth = parseFloat(signal.rangeWidth);
+  const maxAllowedRange = MAX_RANGE[symbol];
+  if (maxAllowedRange && rangeWidth > maxAllowedRange) {
+    logger.warn('ORB blocked: opening range too wide for MLL buffer', {
+      symbol, rangeWidth: rangeWidth.toFixed(2), maxAllowed: maxAllowedRange
+    });
+    return { executed: false, reason: `ORB: range ${rangeWidth.toFixed(2)} > max ${maxAllowedRange} — stop too wide for MLL buffer` };
+  }
+
+  // ── Session time filter ───────────────────────────────────────────────────────
   const currentCandle = history[history.length - 1];
   let cTime = currentCandle.timestamp || currentCandle.time;
   if (typeof cTime === 'string') cTime = new Date(cTime).getTime();
   else if (typeof cTime === 'number' && cTime < 10000000000) cTime *= 1000;
-  
+
   const now = new Date(cTime || Date.now());
   const nyTimeStr = now.toLocaleString('en-US', { timeZone: 'America/New_York' });
   const nyTime = new Date(nyTimeStr);
   if (nyTime.getHours() === 16) {
     return { executed: false, reason: 'Market Closed (16:00 - 17:00 ET)' };
   }
-  
+
   const direction = signal.action;
-  const strategy  = 'VWAP Mean Reversion';
-  const regime    = 'mean-reverting';
-  const isTrending = false;
+  const strategy  = signal.strategy  || 'ORB';
+  const regime    = signal.regime    || 'opening_range';
+
+  logger.info('ORB signal generated', {
+    symbol, direction, regime,
+    rangeHigh: signal.rangeHigh?.toFixed(2),
+    rangeLow:  signal.rangeLow?.toFixed(2),
+    rangeWidth: rangeWidth.toFixed(2),
+    entry:  signal.entry?.toFixed(2),
+    stop:   signal.stopLoss?.toFixed(2),
+    target: signal.target?.toFixed(2),
+  });
   
   const volClass = classifyVolume(history).toUpperCase();
 
-  // Macro Trend Alignment: allow VWAP mean-reversion entries (counter-trend is the strategy),
-  // but block entries when price is in a SEVERE trend (>2% from 200 SMA) to avoid catching knives.
-  if (history.length >= 50) {
-    const smaPeriod = Math.min(history.length, 200);
-    const smaSlice = history.slice(-smaPeriod);
-    const sma = smaSlice.reduce((sum, b) => sum + b.close, 0) / smaPeriod;
-    const smaDeviation = (price - sma) / sma;
-    if (direction === 'LONG' && smaDeviation < -0.02) {
-      logger.warn(`Trade blocked: LONG but price is >2% below 200 SMA — severe downtrend`, { symbol, price: price.toFixed(2), sma: sma.toFixed(2), deviation: (smaDeviation * 100).toFixed(2) + '%' });
-      return { executed: false, reason: 'Macro Trend: Severe downtrend (>2% below 200 SMA), no LONG' };
-    }
-    if (direction === 'SHORT' && smaDeviation > 0.02) {
-      logger.warn(`Trade blocked: SHORT but price is >2% above 200 SMA — severe uptrend`, { symbol, price: price.toFixed(2), sma: sma.toFixed(2), deviation: (smaDeviation * 100).toFixed(2) + '%' });
-      return { executed: false, reason: 'Macro Trend: Severe uptrend (>2% above 200 SMA), no SHORT' };
-    }
-  }
+  // ORB is inherently directional (breaks above = LONG, breaks below = SHORT).
+  // No additional macro trend filter needed — the range itself is the filter.
 
   logger.info('Trade executor started', {
     symbol,
@@ -160,12 +167,13 @@ async function execute({ bundle }) {
     const db = getDb();
     openTrades = db.prepare("SELECT * FROM trades WHERE status = 'open'").all();
 
-    // Max 6 trades per day cap — allows catching all good signals across 2 symbols
+    // ORB: max 2 trades per day (1 per symbol). ORB itself enforces tradedToday
+    // but this DB-backed check survives server restarts.
     const today = getGlobexSessionDate();
     const todayTradesCount = db.prepare("SELECT COUNT(*) as count FROM trades WHERE timestamp LIKE ?").get(today + '%').count;
-    if (todayTradesCount >= 6) {
-      logger.warn('Trade blocked: Max trades per day (6) reached', { todayTradesCount });
-      return { executed: false, reason: 'Max 6 trades per day reached' };
+    if (todayTradesCount >= 2) {
+      logger.warn('Trade blocked: Max ORB trades per day (2) reached', { todayTradesCount });
+      return { executed: false, reason: 'Max 2 ORB trades per day reached' };
     }
   } catch (err) {
     logger.warn('Failed to fetch trades from DB', { error: err.message });
