@@ -41,15 +41,15 @@ class ExecutionManager:
             if estimated_cost < target_cost:
                 logger.warning(f"⚠️ Margin limit reached! Reduced {symbol} allocation to fit remaining Buying Power.")
 
-            # Define catastrophic safety bracket (10% profit limit, 5% stop loss)
+            # Define catastrophic safety bracket (10% profit limit, 2% stop loss)
             if action == "LONG":
                 side = OrderSide.BUY
                 tp_price = round(current_price * 1.10, 2)
-                sl_price = round(current_price * 0.95, 2)
+                sl_price = round(current_price * 0.98, 2)
             elif action == "SHORT":
                 side = OrderSide.SELL
                 tp_price = round(current_price * 0.90, 2)
-                sl_price = round(current_price * 1.05, 2)
+                sl_price = round(current_price * 1.02, 2)
             else:
                 return
 

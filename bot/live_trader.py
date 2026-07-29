@@ -13,7 +13,7 @@ import logging
 from alpaca.data.live import StockDataStream
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import MarketOrderRequest
-from alpaca.trading.enums import OrderSide, TimeInForce
+from alpaca.trading.enums import OrderSide, TimeInForce, PositionSide
 
 from bot.strategy.mean_reversion import VWAPMeanReversion
 from bot.execution.execution_manager import ExecutionManager
@@ -94,6 +94,24 @@ async def handle_bar(bar_message):
 def main():
     logger.info("🤖 Starting Multi-Symbol Live Trader Execution Engine")
     
+    # ── STATE RECOVERY ──────────────────────────────────────────────────────────
+    logger.info("🔄 Checking Alpaca for active positions to recover state...")
+    try:
+        positions = trading_client.get_all_positions()
+        recovered_count = 0
+        for pos in positions:
+            if pos.symbol in SYMBOLS:
+                direction = 1 if pos.side == PositionSide.LONG else -1
+                current_positions[pos.symbol] = direction
+                strategies[pos.symbol].position = direction
+                strategies[pos.symbol].entry_price = float(pos.avg_entry_price)
+                recovered_count += 1
+                logger.info(f"✅ Recovered {pos.symbol} | Side: {pos.side.name} | Entry: ${pos.avg_entry_price}")
+        logger.info(f"🔄 State Recovery Complete. Restored {recovered_count} active positions.")
+    except Exception as e:
+        logger.error(f"🚨 Failed to recover state: {e}")
+    # ────────────────────────────────────────────────────────────────────────────
+
     # Just grab equity once for starting log
     start_bp = exec_manager.get_account_capital()["buying_power"]
     logger.info(f"Account Margin Buying Power: ${start_bp:,.2f}")

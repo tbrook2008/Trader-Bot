@@ -15,9 +15,10 @@ It utilizes a deterministic quantitative logic engine:
 2. **Z-Score Deviation:** Calculates the standard deviation of the asset's price from the VWAP.
 3. **Execution Manager:** When the price hits an extreme statistical deviation (Z-Score > 3.0 or < -3.0), the bot identifies an exhaustion point and fires a mean-reversion trade.
 4. **Position Sizing Guard:** Each trade is strictly capped at **10% of total equity** and dynamically checks live remaining Buying Power before entering to ensure the bot can seamlessly trade all 10 symbols concurrently without margin rejections.
-5. **Dynamic Exits:** Positions are dynamically exited when the Z-Score normalizes (reverts to the mean or flips to the opposite side).
-6. **Absolute Stop Loss:** A strict 2.0% hard stop-loss protects capital if the absolute price moves against the entry.
-7. **Volatility Guard:** If the Z-Score normalizes but the trade is losing money, the bot recognizes that volatility expanded (breaking the statistical setup) and immediately exits to cut the loss.
+5. **State Recovery on Boot:** The bot queries the live Alpaca API on startup and instantly re-injects any active open positions and their precise entry prices into the quantitative memory state, preventing orphaned trades.
+6. **Dynamic Exits:** Positions are dynamically exited when the Z-Score normalizes (reverts to the mean or flips to the opposite side).
+7. **Absolute Stop Loss & Hard Brackets:** A strict 2.0% absolute stop-loss mathematically cuts losses in the engine. Simultaneously, a hardware-level 2.0% stop-loss bracket order is attached on the broker side in case of server crashes.
+8. **Volatility Guard:** If the Z-Score normalizes but the trade is losing money, the bot recognizes that volatility expanded (breaking the statistical setup) and immediately exits to cut the loss.
 
 ---
 
