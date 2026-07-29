@@ -21,7 +21,7 @@ class ExecutionManager:
             logger.error(f"Failed to fetch account info: {e}")
             return {"equity": 50000.0, "buying_power": 100000.0}
 
-    def execute_hybrid_bracket(self, action: str, current_price: float, symbol: str, risk_pct: float = 0.005):
+    def execute_hybrid_bracket(self, action: str, current_price: float, symbol: str, max_position_pct: float = 0.10):
         """
         Executes a dynamic-sized market order with a wide bracket for catastrophic safety.
         The algorithmic Z-score engine is still expected to exit the trade earlier dynamically.
@@ -32,15 +32,14 @@ class ExecutionManager:
             buying_power = account_info["buying_power"]
 
             # Dynamic Margin Sizing
-            risk_dollars = equity * risk_pct
-            assumed_risk_per_share = current_price * 0.005 # 0.5% stop loss for scaling
-            shares = max(1, int(risk_dollars / assumed_risk_per_share))
-
+            target_cost = equity * max_position_pct
+            
             # Safety check: Do we have enough buying power?
-            estimated_cost = shares * current_price
-            if estimated_cost > buying_power * 0.95: # Leave 5% margin buffer
-                shares = max(1, int((buying_power * 0.95) / current_price))
-                logger.warning(f"⚠️ Margin limit reached! Reduced {symbol} shares to {shares}.")
+            estimated_cost = min(target_cost, buying_power * 0.95)
+            shares = max(1, int(estimated_cost / current_price))
+            
+            if estimated_cost < target_cost:
+                logger.warning(f"⚠️ Margin limit reached! Reduced {symbol} allocation to fit remaining Buying Power.")
 
             # Define catastrophic safety bracket (10% profit limit, 5% stop loss)
             if action == "LONG":

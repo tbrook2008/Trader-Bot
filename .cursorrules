@@ -1,0 +1,8 @@
+# Standard Operating Procedure (SOP) for Code Changes
+
+Whenever we make any changes to this codebase, the following strict sequence of steps MUST be followed:
+1. **Make the changes:** Implement the requested code modifications.
+2. **Test code logic:** Ensure there are no syntax errors, verify the logic runs correctly, and make sure everything is connected properly.
+3. **Run a backtest:** Execute `run_stock_test.py` or the appropriate backtest script on the VPS to verify how the changes impacted returns.
+4. **Redo documentation:** Update `README.md`, `context.md`, or inline comments to reflect the new architecture or logic.
+5. **Push changes to Git:** Commit the changes and push them to the remote GitHub repository.
