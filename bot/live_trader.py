@@ -7,10 +7,15 @@ Supports multi-symbol portfolio routing.
 import os
 import time
 import asyncio
+from datetime import datetime, timedelta
+import pytz
 from dotenv import load_dotenv
 import logging
 
 from alpaca.data.live import StockDataStream
+from alpaca.data.historical import StockHistoricalDataClient
+from alpaca.data.requests import StockBarsRequest
+from alpaca.data.timeframe import TimeFrame
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import MarketOrderRequest
 from alpaca.trading.enums import OrderSide, TimeInForce, PositionSide
@@ -33,6 +38,7 @@ if not API_KEY or not SECRET_KEY:
 # Initialize Alpaca Clients
 trading_client = TradingClient(API_KEY, SECRET_KEY, paper=True)
 data_stream = StockDataStream(API_KEY, SECRET_KEY)
+historical_client = StockHistoricalDataClient(API_KEY, SECRET_KEY)
 
 # Strategy & State (Multi-Symbol)
 SYMBOLS = ["SPY", "QQQ", "IWM", "MSFT", "NVDA", "AAPL", "GOOGL", "AMD", "AMZN", "META"]
@@ -110,6 +116,53 @@ def main():
         logger.info(f"🔄 State Recovery Complete. Restored {recovered_count} active positions.")
     except Exception as e:
         logger.error(f"🚨 Failed to recover state: {e}")
+    # ── HISTORICAL DATA WARM UP ─────────────────────────────────────────────────
+    logger.info("🔥 Initiating Historical Data Warm Up...")
+    try:
+        tz = pytz.timezone('US/Eastern')
+        now = datetime.now(tz)
+        start_time = now.replace(hour=9, minute=30, second=0, microsecond=0)
+        
+        # If we start the bot before 9:30 AM, fetch yesterday's data instead so we don't crash
+        if now < start_time:
+            start_time = start_time - timedelta(days=1)
+            
+        req = StockBarsRequest(
+            symbol_or_symbols=SYMBOLS,
+            timeframe=TimeFrame.Minute,
+            start=start_time
+        )
+        
+        bars = historical_client.get_stock_bars(req)
+        
+        # Loop through each symbol's returned historical bars and feed them sequentially
+        for symbol in SYMBOLS:
+            if symbol in bars.data:
+                symbol_bars = bars.data[symbol]
+                for bar in symbol_bars:
+                    bar_dict = {
+                        "timestamp": bar.timestamp,
+                        "open": float(bar.open),
+                        "high": float(bar.high),
+                        "low": float(bar.low),
+                        "close": float(bar.close),
+                        "volume": float(bar.volume)
+                    }
+                    signal = strategies[symbol].evaluate(bar_dict, symbol)
+                    bar_counts[symbol] += 1
+                    
+                    if signal and signal["action"] == "EXIT" and current_positions[symbol] != 0:
+                        logger.warning(f"🚨 {symbol} triggered EXIT during warm up! Exiting stranded position immediately.")
+                        exec_manager.exit_position(symbol)
+                        current_positions[symbol] = 0
+                        
+                logger.info(f"🔥 Warmed up {len(symbol_bars)} bars for {symbol}. Current Z-Score: {strategies[symbol].latest_z_score:.2f}")
+            else:
+                logger.warning(f"⚠️ No historical data found for {symbol} to warm up.")
+        
+        logger.info("🔥 Engine Warm Up Complete.")
+    except Exception as e:
+        logger.error(f"🚨 Failed to warm up historical data: {e}")
     # ────────────────────────────────────────────────────────────────────────────
 
     # Just grab equity once for starting log
