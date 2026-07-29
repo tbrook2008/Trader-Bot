@@ -76,7 +76,7 @@ class ExecutionManager:
         Closing the position via Alpaca automatically cancels any resting OCO/Bracket orders.
         """
         try:
-            self.client.close_position(symbol, cancel_orders=True)
+            self.client.close_position(symbol)
             logger.info(f"💥 EXECUTED DYNAMIC EXIT | Closed all open positions and cancelled brackets for {symbol}")
         except Exception as e:
             logger.error(f"🚨 FAILED TO EXIT {symbol}: {e}")
