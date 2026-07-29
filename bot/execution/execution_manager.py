@@ -76,6 +76,16 @@ class ExecutionManager:
         Closing the position via Alpaca automatically cancels any resting OCO/Bracket orders.
         """
         try:
+            # First fetch and cancel any resting bracket orders for this symbol so shares are released
+            from alpaca.trading.requests import GetOrdersRequest
+            from alpaca.trading.enums import QueryOrderStatus
+            req = GetOrdersRequest(status=QueryOrderStatus.OPEN, symbols=[symbol])
+            open_orders = self.client.get_orders(req)
+            for order in open_orders:
+                self.client.cancel_order_by_id(order.id)
+                logger.info(f"🛑 Cancelled resting order {order.id} for {symbol}")
+            
+            # Now safely liquidate the position
             self.client.close_position(symbol)
             logger.info(f"💥 EXECUTED DYNAMIC EXIT | Closed all open positions and cancelled brackets for {symbol}")
         except Exception as e:
