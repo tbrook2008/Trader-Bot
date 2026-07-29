@@ -16,10 +16,11 @@ import numpy as np
 
 class VWAPMeanReversion:
     
-    def __init__(self, entry_z: float = 3.0, exit_z: float = 0.5, stop_z: float = 4.5):
+    def __init__(self, entry_z: float = 3.0, exit_z: float = 0.5, stop_z: float = 4.5, max_loss_pct: float = 0.02):
         self.entry_z = entry_z
         self.exit_z = exit_z
         self.stop_z = stop_z
+        self.max_loss_pct = max_loss_pct
         
         # State
         self.current_date = None
@@ -68,22 +69,68 @@ class VWAPMeanReversion:
         
         # ── EXITS ─────────────────────────────────────────────────────────────
         if self.position == 1:
-            if z_score >= -self.exit_z or z_score <= -self.stop_z:
+            # 1. Absolute Stop Loss
+            if price <= self.entry_price * (1.0 - self.max_loss_pct):
                 self.position = 0
                 return {
                     "action": "EXIT",
-                    "reason": "Mean Reversion" if z_score >= -self.exit_z else "Stop Loss",
+                    "reason": "Absolute Stop Loss",
+                    "timestamp": ts,
+                    "price": price,
+                    "z_score": z_score,
+                    "vwap": vwap
+                }
+            # 2. Z-Score Mean Reversion & Volatility Failure
+            if z_score >= -self.exit_z:
+                self.position = 0
+                return {
+                    "action": "EXIT",
+                    "reason": "Mean Reversion" if price > self.entry_price else "Volatility Exit",
+                    "timestamp": ts,
+                    "price": price,
+                    "z_score": z_score,
+                    "vwap": vwap
+                }
+            # 3. Z-Score Stop Loss
+            if z_score <= -self.stop_z:
+                self.position = 0
+                return {
+                    "action": "EXIT",
+                    "reason": "Z-Score Stop Loss",
                     "timestamp": ts,
                     "price": price,
                     "z_score": z_score,
                     "vwap": vwap
                 }
         elif self.position == -1:
-            if z_score <= self.exit_z or z_score >= self.stop_z:
+            # 1. Absolute Stop Loss
+            if price >= self.entry_price * (1.0 + self.max_loss_pct):
                 self.position = 0
                 return {
                     "action": "EXIT",
-                    "reason": "Mean Reversion" if z_score <= self.exit_z else "Stop Loss",
+                    "reason": "Absolute Stop Loss",
+                    "timestamp": ts,
+                    "price": price,
+                    "z_score": z_score,
+                    "vwap": vwap
+                }
+            # 2. Z-Score Mean Reversion & Volatility Failure
+            if z_score <= self.exit_z:
+                self.position = 0
+                return {
+                    "action": "EXIT",
+                    "reason": "Mean Reversion" if price < self.entry_price else "Volatility Exit",
+                    "timestamp": ts,
+                    "price": price,
+                    "z_score": z_score,
+                    "vwap": vwap
+                }
+            # 3. Z-Score Stop Loss
+            if z_score >= self.stop_z:
+                self.position = 0
+                return {
+                    "action": "EXIT",
+                    "reason": "Z-Score Stop Loss",
                     "timestamp": ts,
                     "price": price,
                     "z_score": z_score,
