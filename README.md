@@ -15,6 +15,8 @@ It utilizes a deterministic quantitative logic engine:
 2. **Z-Score Deviation:** Calculates the standard deviation of the asset's price from the VWAP.
 3. **Execution Manager:** When the price hits an extreme statistical deviation (Z-Score > 2.0 or < -2.0), the bot identifies an exhaustion point and fires a mean-reversion trade (going LONG when oversold, SHORT when overbought).
 4. **Dynamic Exits:** Positions are dynamically exited when the Z-Score normalizes (reverts to the mean or flips to the opposite side).
+5. **Absolute Stop Loss:** A strict 2.0% hard stop-loss protects capital if the absolute price moves against the entry.
+6. **Volatility Guard:** If the Z-Score normalizes but the trade is losing money, the bot recognizes that volatility expanded (breaking the statistical setup) and immediately exits to cut the loss.
 
 ---
 
