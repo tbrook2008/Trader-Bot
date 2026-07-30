@@ -89,4 +89,7 @@ class ExecutionManager:
             self.client.close_position(symbol)
             logger.info(f"💥 EXECUTED DYNAMIC EXIT | Closed all open positions and cancelled brackets for {symbol}")
         except Exception as e:
-            logger.error(f"🚨 FAILED TO EXIT {symbol}: {e}")
+            if "position not found" in str(e).lower() or "40410000" in str(e):
+                logger.info(f"ℹ️ No active position found for {symbol} to close (order likely cancelled before filling).")
+            else:
+                logger.error(f"🚨 FAILED TO EXIT {symbol}: {e}")
