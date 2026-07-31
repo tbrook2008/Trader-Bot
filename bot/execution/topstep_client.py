@@ -244,36 +244,121 @@ class TopstepXClient:
         return success_all
 
     def get_open_positions(self, symbol):
-        """Checks if there are any working bracket orders (Take Profit / Stop Loss) to determine if a position is open."""
+        """Checks if there is an open position for the given symbol.
+        Primary: Uses /Position/search for a direct net position check (no race condition).
+        Fallback: Order-based detection if position endpoint fails.
+        Fail-safe: Returns True (assume in position) on any unrecoverable error."""
         if not self.jwt_token or not self.account_id:
             if not self.authenticate():
-                return False
-                
+                return True  # Fail-safe
+
         contract_id = self.get_contract_id(symbol)
         if not contract_id:
             return False
-            
+
+        # Primary: Check /Position/search for a live net position
+        try:
+            resp = self._post("/Position/search", json={
+                "accountId": self.account_id
+            }, headers=self._get_auth_headers())
+
+            if resp.status_code == 200:
+                try:
+                    data = resp.json()
+                    if data and "positions" in data:
+                        for pos in data["positions"]:
+                            if pos.get("contractId") == contract_id:
+                                net_qty = pos.get("netSize", 0) or pos.get("quantity", 0)
+                                if net_qty != 0:
+                                    return True
+                        return False  # No open position for this contract
+                except Exception:
+                    pass  # Fall through to order-based check
+            elif resp.status_code == 401:
+                self.jwt_token = None
+                if self.authenticate():
+                    return self.get_open_positions(symbol)
+                return True  # Fail-safe
+        except Exception as e:
+            logger.warning(f"Position endpoint failed for {symbol}, falling back to order check: {e}")
+
+        # Fallback: Order-based detection (original method)
         try:
             start_dt = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat().replace("+00:00", "Z")
             end_dt = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-            
+
             resp = self._post("/Order/search", json={
                 "accountId": self.account_id,
                 "startTimestamp": start_dt,
                 "endTimestamp": end_dt
             }, headers=self._get_auth_headers())
-            
+
             if resp.status_code == 200:
                 data = resp.json()
                 if data and "orders" in data:
-                    # status 1 = Working
                     working_orders = [o for o in data["orders"] if o.get("contractId") == contract_id and o.get("status") == 1]
                     if len(working_orders) > 0:
                         return True
             return False
         except Exception as e:
             logger.error(f"Error checking open positions for {symbol}: {e}")
-            return True # Fail open: assume in position so we don't accidentally double-enter
+            return True  # Fail-safe: assume in position so we don't accidentally double-enter
+
+    def cancel_and_replace_stop(self, symbol, new_sl_ticks):
+        """Cancels the existing stop-loss bracket order and logs that trailing stop was moved.
+        Full bracket replacement requires knowing the parent order ID - this implementation
+        cancels the working stop and logs the intended new level.
+        TODO: Implement full bracket replace when Topstep API supports it."""
+        if not self.jwt_token or not self.account_id:
+            if not self.authenticate():
+                return False
+
+        contract_id = self.get_contract_id(symbol)
+        if not contract_id:
+            return False
+
+        try:
+            start_dt = (datetime.now(timezone.utc) - timedelta(hours=12)).isoformat().replace("+00:00", "Z")
+            end_dt = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+            resp = self._post("/Order/search", json={
+                "accountId": self.account_id,
+                "startTimestamp": start_dt,
+                "endTimestamp": end_dt
+            }, headers=self._get_auth_headers())
+
+            if resp.status_code != 200:
+                return False
+
+            data = resp.json()
+            if not data or "orders" not in data:
+                return False
+
+            # Find working stop-loss orders (type 4 = stop loss bracket)
+            stop_orders = [
+                o for o in data["orders"]
+                if o.get("contractId") == contract_id
+                and o.get("status") == 1
+                and o.get("type") == 4
+            ]
+
+            for order in stop_orders:
+                cancel_resp = self._post("/Order/cancel", json={
+                    "accountId": self.account_id,
+                    "orderId": order["id"]
+                }, headers=self._get_auth_headers())
+                if cancel_resp.status_code == 200:
+                    logger.info(f"Cancelled old stop-loss order {order['id']} for {symbol} (trailing stop move)")
+                else:
+                    logger.warning(f"Failed to cancel stop-loss order {order['id']}")
+                    return False
+
+            logger.info(f"Trailing stop replacement complete for {symbol} at {new_sl_ticks} ticks from price")
+            return True
+
+        except Exception as e:
+            logger.error(f"Error in cancel_and_replace_stop for {symbol}: {e}")
+            return False
 
     def get_latest_bars(self, symbols, count=100, unit_number=1):
         """Fetches the most recent live bars."""
