@@ -43,22 +43,22 @@ class BotConfig(BaseConfig):
 
 HOLY_GRAIL_CONFIGS = {
     "MNQ": BotConfig(
-        TIMEFRAME=10,
+        TIMEFRAME=15,
         RR_RATIO=1.0,
         LOOKBACK_BARS=20,
         MIN_RISK_ATR_MULTIPLIER=0.5,
-        MAX_RISK_ATR_MULTIPLIER=6.0,
-        MIN_FVG_ATR_MULTIPLIER=0.25,
+        MAX_RISK_ATR_MULTIPLIER=5.0,
+        MIN_FVG_ATR_MULTIPLIER=0.5,
         TIME_WINDOW={"start_h": 13, "start_m": 0, "end_h": 15, "end_m": 30}
     ),
     "MES": BotConfig(
-        TIMEFRAME=2,
-        RR_RATIO=1.5,
-        LOOKBACK_BARS=10,
+        TIMEFRAME=5,
+        RR_RATIO=1.0,
+        LOOKBACK_BARS=30,
         MIN_RISK_ATR_MULTIPLIER=0.5,
-        MAX_RISK_ATR_MULTIPLIER=6.0,
-        MIN_FVG_ATR_MULTIPLIER=1.0,
-        TIME_WINDOW={"start_h": 13, "start_m": 0, "end_h": 15, "end_m": 30}
+        MAX_RISK_ATR_MULTIPLIER=5.0,
+        MIN_FVG_ATR_MULTIPLIER=0.5,
+        TIME_WINDOW={"start_h": 8, "start_m": 30, "end_h": 11, "end_m": 30}
     ),
     "MYM": BotConfig(
         TIMEFRAME=15,
@@ -90,7 +90,7 @@ def check_rejection(bars_since_fvg, zone_low, zone_high, direction):
     else:
         return last_close > zone_high
 
-def detect_ict_setup(df, symbol, config):
+def detect_ict_setup(df, df_30m, df_1d, symbol, config):
     if len(df) < config.LOOKBACK_BARS:
         return None
         
@@ -109,63 +109,122 @@ def detect_ict_setup(df, symbol, config):
     if pd.isna(current_atr) or current_atr == 0:
         return None
         
+    # --- HTF Bias ---
+    htf_bias = None
+    if df_30m is not None and not df_30m.empty and len(df_30m) >= 20:
+        last_20_30m = df_30m.tail(20).reset_index(drop=True)
+        hh_idx = last_20_30m['high'].idxmax()
+        ll_idx = last_20_30m['low'].idxmin()
+        if hh_idx > ll_idx: htf_bias = "buy"
+        else: htf_bias = "sell"
+        
+    # --- PDH / PDL ---
+    pdh, pdl = None, None
+    if df_1d is not None and not df_1d.empty and len(df_1d) >= 2:
+        # Use the previous completed day (-2 because -1 is the current forming day)
+        pdh = df_1d.iloc[-2]['high']
+        pdl = df_1d.iloc[-2]['low']
+        
     min_fvg_pts = config.MIN_FVG_ATR_MULTIPLIER * current_atr
     min_risk_pts = config.MIN_RISK_ATR_MULTIPLIER * current_atr
     max_risk_pts = config.MAX_RISK_ATR_MULTIPLIER * current_atr
     
     # 1. Bearish Setup (Short)
-    highest_idx = recent_bars['high'].idxmax()
-    if highest_idx < len(recent_bars) - 2:
-        sweep_high = recent_bars.loc[highest_idx, 'high']
-        recent_close = recent_bars.iloc[-1]['close']
-        if recent_close < recent_bars.loc[highest_idx, 'low']:
-            for i in range(highest_idx, len(recent_bars)-2):
-                c1_low = recent_bars.loc[i, 'low']
-                c3_high = recent_bars.loc[i+2, 'high']
-                
-                fvg_gap = c1_low - c3_high
-                if fvg_gap >= min_fvg_pts:
-                    zone_low, zone_high = c3_high, c1_low
-                    stop_loss = sweep_high
-                    risk_points = stop_loss - zone_low
-                    
-                    if min_risk_pts <= risk_points <= max_risk_pts:
-                        bars_since_fvg = recent_bars.iloc[i + 2:]
-                        if check_rejection(bars_since_fvg, zone_low, zone_high, "sell"):
-                            return {
-                                "side": "sell",
-                                "symbol": symbol,
-                                "risk_points": risk_points,
-                                "reason": f"Bearish Sweep -> Retrace -> Rej -> FVG (Gap: {fvg_gap:.2f}, Risk: {risk_points:.2f})",
-                                "timestamp": recent_bars.loc[i+2, 'timestamp'] if 'timestamp' in recent_bars.columns else df.iloc[-1].get("timestamp", "0")
-                            }
+    if htf_bias in [None, "sell"]:
+        highest_idx = recent_bars['high'].idxmax()
+        if highest_idx < len(recent_bars) - 2:
+            sweep_high = recent_bars.loc[highest_idx, 'high']
+            sweep_low_threshold = recent_bars.loc[highest_idx, 'low']
+            
+            # Find MSS Displacement
+            mss_idx = None
+            for j in range(highest_idx + 1, len(recent_bars)):
+                if recent_bars.loc[j, 'close'] < sweep_low_threshold:
+                    c = recent_bars.loc[j]
+                    body = abs(c['close'] - c['open'])
+                    crange = c['high'] - c['low']
+                    if crange > 0 and (body / crange) >= 0.60:
+                        mss_idx = j
+                        break
+                        
+            if mss_idx is not None:
+                for i in range(highest_idx, len(recent_bars)-2):
+                    c1_low = recent_bars.loc[i, 'low']
+                    c3_high = recent_bars.loc[i+2, 'high']
+                    fvg_gap = c1_low - c3_high
+                    if fvg_gap >= min_fvg_pts:
+                        zone_low, zone_high = c3_high, c1_low
+                        stop_loss = sweep_high
+                        risk_points = stop_loss - zone_low
+                        
+                        if min_risk_pts <= risk_points <= max_risk_pts:
+                            # Fibonacci OTE Filter
+                            swing_low = recent_bars.loc[highest_idx:i+2, 'low'].min()
+                            move_range = sweep_high - swing_low
+                            fib_618 = sweep_high - (move_range * 0.618)
+                            fib_790 = sweep_high - (move_range * 0.790)
+                            
+                            # Price must currently be in the OTE zone
+                            if fib_790 <= current_price <= fib_618:
+                                bars_since_fvg = recent_bars.iloc[i + 2:]
+                                if check_rejection(bars_since_fvg, zone_low, zone_high, "sell"):
+                                    conviction = pdh is not None and abs(sweep_high - pdh) <= (0.5 * current_atr)
+                                    return {
+                                        "side": "sell",
+                                        "symbol": symbol,
+                                        "risk_points": risk_points,
+                                        "high_conviction": conviction,
+                                        "reason": f"Bearish Sweep (OTE+MSS) -> Retrace -> Rej -> FVG (Gap: {fvg_gap:.2f}, Risk: {risk_points:.2f})",
+                                        "timestamp": recent_bars.loc[i+2, 'timestamp'] if 'timestamp' in recent_bars.columns else df.iloc[-1].get("timestamp", "0")
+                                    }
 
     # 2. Bullish Setup (Long)
-    lowest_idx = recent_bars['low'].idxmin()
-    if lowest_idx < len(recent_bars) - 2: 
-        sweep_low = recent_bars.loc[lowest_idx, 'low']
-        recent_close = recent_bars.iloc[-1]['close']
-        if recent_close > recent_bars.loc[lowest_idx, 'high']:
-            for i in range(lowest_idx, len(recent_bars)-2):
-                c1_high = recent_bars.loc[i, 'high']
-                c3_low = recent_bars.loc[i+2, 'low']
-                
-                fvg_gap = c3_low - c1_high
-                if fvg_gap >= min_fvg_pts:
-                    zone_low, zone_high = c1_high, c3_low
-                    stop_loss = sweep_low
-                    risk_points = zone_high - stop_loss
-                    
-                    if min_risk_pts <= risk_points <= max_risk_pts:
-                        bars_since_fvg = recent_bars.iloc[i + 2:]
-                        if check_rejection(bars_since_fvg, zone_low, zone_high, "buy"):
-                            return {
-                                "side": "buy",
-                                "symbol": symbol,
-                                "risk_points": risk_points,
-                                "reason": f"Bullish Sweep -> Retrace -> Rej -> FVG (Gap: {fvg_gap:.2f}, Risk: {risk_points:.2f})",
-                                "timestamp": recent_bars.loc[i+2, 'timestamp'] if 'timestamp' in recent_bars.columns else df.iloc[-1].get("timestamp", "0")
-                            }
+    if htf_bias in [None, "buy"]:
+        lowest_idx = recent_bars['low'].idxmin()
+        if lowest_idx < len(recent_bars) - 2: 
+            sweep_low = recent_bars.loc[lowest_idx, 'low']
+            sweep_high_threshold = recent_bars.loc[lowest_idx, 'high']
+            
+            # Find MSS Displacement
+            mss_idx = None
+            for j in range(lowest_idx + 1, len(recent_bars)):
+                if recent_bars.loc[j, 'close'] > sweep_high_threshold:
+                    c = recent_bars.loc[j]
+                    body = abs(c['close'] - c['open'])
+                    crange = c['high'] - c['low']
+                    if crange > 0 and (body / crange) >= 0.60:
+                        mss_idx = j
+                        break
+                        
+            if mss_idx is not None:
+                for i in range(lowest_idx, len(recent_bars)-2):
+                    c1_high = recent_bars.loc[i, 'high']
+                    c3_low = recent_bars.loc[i+2, 'low']
+                    fvg_gap = c3_low - c1_high
+                    if fvg_gap >= min_fvg_pts:
+                        zone_low, zone_high = c1_high, c3_low
+                        stop_loss = sweep_low
+                        risk_points = zone_high - stop_loss
+                        
+                        if min_risk_pts <= risk_points <= max_risk_pts:
+                            # Fibonacci OTE Filter
+                            swing_high = recent_bars.loc[lowest_idx:i+2, 'high'].max()
+                            move_range = swing_high - sweep_low
+                            fib_618 = sweep_low + (move_range * 0.618)
+                            fib_790 = sweep_low + (move_range * 0.790)
+                            
+                            if fib_618 <= current_price <= fib_790:
+                                bars_since_fvg = recent_bars.iloc[i + 2:]
+                                if check_rejection(bars_since_fvg, zone_low, zone_high, "buy"):
+                                    conviction = pdl is not None and abs(sweep_low - pdl) <= (0.5 * current_atr)
+                                    return {
+                                        "side": "buy",
+                                        "symbol": symbol,
+                                        "risk_points": risk_points,
+                                        "high_conviction": conviction,
+                                        "reason": f"Bullish Sweep (OTE+MSS) -> Retrace -> Rej -> FVG (Gap: {fvg_gap:.2f}, Risk: {risk_points:.2f})",
+                                        "timestamp": recent_bars.loc[i+2, 'timestamp'] if 'timestamp' in recent_bars.columns else df.iloc[-1].get("timestamp", "0")
+                                    }
     return None
 
 def get_eastern_time():
@@ -185,13 +244,19 @@ def main():
     for symbol in SYMBOLS:
         if topstep.get_open_positions(symbol):
             in_position[symbol] = True
-            balance_before_trade[symbol] = topstep.get_account_balance()
+            bal = topstep.get_account_balance()
+            while bal is None:
+                logger.warning("Could not fetch balance during reconcile, retrying...")
+                time.sleep(2)
+                bal = topstep.get_account_balance()
+            balance_before_trade[symbol] = bal
             logger.warning(f"⚠️ STARTUP RECONCILE: Found existing open position for {symbol}. Resuming tracking.")
 
     news_filter = NewsFilter()
-    last_signal = ""
+    last_signals = set()
     start_of_day_balance = None
     current_date = None
+    trade_state = {}
     
     while True:
         try:
@@ -230,7 +295,43 @@ def main():
                                 consecutive_losses = 0
                                 logger.info(f"📈 Trade for {symbol} resulted in a win (${trade_pnl:.2f}). Consecutive losses reset.")
                         balance_before_trade[symbol] = None
+                        if symbol in trade_state:
+                            del trade_state[symbol]
+                            
+                    elif is_open and symbol in trade_state and tf_symbols:
+                        # Local Trailing Stop at +1R
+                        entry = trade_state[symbol]['entry']
+                        side = trade_state[symbol]['side']
+                        risk = trade_state[symbol]['risk']
+                        # Try to get latest price from cache
+                        tf = HOLY_GRAIL_CONFIGS[symbol].TIMEFRAME if symbol in HOLY_GRAIL_CONFIGS else 1
+                        if tf in bars_data and symbol in bars_data[tf] and bars_data[tf][symbol]:
+                            curr_price = bars_data[tf][symbol][-1]['close']
+                            pnl_pts = (curr_price - entry) if side == "buy" else (entry - curr_price)
+                            
+                            if pnl_pts >= risk and not trade_state[symbol]['be_activated']:
+                                trade_state[symbol]['be_activated'] = True
+                                logger.info(f"🛡️ Trailing Stop: {symbol} hit +1R ({pnl_pts:.2f} pts). Stop moved to Break-Even locally!")
+                                
+                            if trade_state[symbol]['be_activated'] and pnl_pts <= 0:
+                                logger.warning(f"🛡️ Trailing Stop Hit: Flattening {symbol} at Break-Even!")
+                                topstep.flatten_all_positions([symbol])
+                                topstep.cancel_orphaned_brackets(topstep.get_contract_id(symbol))
+                                in_position[symbol] = False
+                                if balance_before_trade[symbol] is not None:
+                                    logger.info(f"📈 Trade for {symbol} stopped at BE (${balance - balance_before_trade[symbol]:.2f}).")
+                                balance_before_trade[symbol] = None
+                                del trade_state[symbol]
                 
+            # 1. Check for Weekend / Maintenance closures
+            # Weekend closure (Friday 5:00 PM ET to Sunday 6:00 PM ET)
+            if (et_now.weekday() == 4 and et_now.hour >= 17) or \
+               (et_now.weekday() == 5) or \
+               (et_now.weekday() == 6 and et_now.hour < 18):
+                logger.info("⏸️ Market is closed for the weekend. Bot sleeping until Sunday 6:00 PM ET...")
+                time.sleep(3600) # Sleep for an hour and check again
+                continue
+
             # Check Topstep EOD 4:59 PM Rule (We liquidate at 4:45 PM to be safe)
             if (et_now.hour == 16 and et_now.minute >= 45) or (et_now.hour == 17):
                 if any_in_position:
@@ -238,7 +339,7 @@ def main():
                     if topstep.flatten_all_positions(SYMBOLS):
                         for sym in SYMBOLS:
                             in_position[sym] = False
-                logger.warning("Market is in the 5:00 PM - 6:00 PM maintenance window. Bot pausing until 6:00 PM ET...")
+                logger.warning("Market is in the 5:00 PM - 6:00 PM daily maintenance window. Bot pausing until 6:00 PM ET...")
                 time.sleep(300) # Sleep 5 minutes
                 continue
                 
@@ -280,16 +381,24 @@ def main():
                         break
                 continue
                 
-            # 2. Fetch Market Data dynamically based on configured timeframes
+            # Fetch Market Data
+            current_ts = time.time()
             tf_symbols = {}
-            for sym in SYMBOLS:
-                tf = HOLY_GRAIL_CONFIGS[sym].TIMEFRAME if sym in HOLY_GRAIL_CONFIGS else 1
-                if tf not in tf_symbols:
-                    tf_symbols[tf] = []
-                tf_symbols[tf].append(sym)
+            for symbol in SYMBOLS:
+                if in_position[symbol]: continue
+                config = HOLY_GRAIL_CONFIGS.get(symbol)
+                if not config: continue
+                tf = config.TIMEFRAME
+                if tf not in tf_symbols: tf_symbols[tf] = []
+                tf_symbols[tf].append(symbol)
+                
+            # Always ensure we fetch 30m and 1440m (1D) for HTF and PDH/PDL
+            all_syms_to_fetch = [s for syms in tf_symbols.values() for s in syms]
+            if all_syms_to_fetch:
+                tf_symbols[30] = list(set(all_syms_to_fetch))
+                tf_symbols[1440] = list(set(all_syms_to_fetch))
                 
             bars_data = {}
-            current_ts = time.time()
             for tf, syms in tf_symbols.items():
                 if tf in _bars_cache_ts and current_ts - _bars_cache_ts[tf] < 30:
                     bars_data[tf] = _bars_cache[tf]
@@ -313,25 +422,40 @@ def main():
                 
                 # 3. Dynamic Session Priority Check (Time Window from Holy Grail Config)
                 is_active_session = False
-                window = active_config.TIME_WINDOW
                 h, m = et_now.hour, et_now.minute
-                start_mins = window["start_h"] * 60 + window["start_m"]
-                end_mins = window["end_h"] * 60 + window["end_m"]
                 curr_mins = h * 60 + m
-                if start_mins <= curr_mins <= end_mins:
-                    is_active_session = True
+                
+                # Lunch Hour Exclusion (12:00 PM to 1:00 PM ET)
+                if 12 * 60 <= curr_mins < 13 * 60:
+                    is_active_session = False
+                else:
+                    windows = active_config.TIME_WINDOWS if hasattr(active_config, 'TIME_WINDOWS') else [active_config.TIME_WINDOW]
+                    for w in windows:
+                        start_mins = w["start_h"] * 60 + w["start_m"]
+                        end_mins = w["end_h"] * 60 + w["end_m"]
+                        if start_mins <= curr_mins <= end_mins:
+                            is_active_session = True
+                            break
                         
                 if is_active_session:
                     tf = active_config.TIMEFRAME
                     if tf in bars_data and symbol in bars_data[tf] and bars_data[tf][symbol]:
                         df_tf = pd.DataFrame(bars_data[tf][symbol])
-                        setup = detect_ict_setup(df_tf, symbol, active_config)
+                        df_30m = pd.DataFrame(bars_data.get(30, {}).get(symbol, []))
+                        df_1d = pd.DataFrame(bars_data.get(1440, {}).get(symbol, []))
+                        setup = detect_ict_setup(df_tf, df_30m, df_1d, symbol, active_config)
                         
                 # 5. Execution with Hard Floor Protection
                 if setup:
                     signal_hash = f"{setup['side']}-{setup['symbol']}-{setup.get('timestamp')}-HolyGrail"
                     
-                    if signal_hash != last_signal:
+                    if signal_hash not in last_signals:
+                        last_signals.add(signal_hash)
+                        
+                        if consecutive_losses >= 3 and not setup.get('high_conviction'):
+                            logger.warning(f"🛑 Max daily losses reached (3). Setup lacked high conviction (PDH/PDL). Skipping {symbol}.")
+                            continue
+                            
                         # Dynamic risk math based on INSTRUMENT_CONFIG
                         point_val = INSTRUMENT_CONFIG[setup['symbol']]["point_value"] if setup['symbol'] in INSTRUMENT_CONFIG else 2.0
                         tick_sz = INSTRUMENT_CONFIG[setup['symbol']]["tick_size"] if setup['symbol'] in INSTRUMENT_CONFIG else 0.25
@@ -340,7 +464,6 @@ def main():
                         
                         if (balance - dollar_risk) < 48000:
                             logger.warning(f"🛡️ SAFETY PROTECT: Holy Grail signalled trade, but risking ${dollar_risk:.2f} would drop balance (${balance:.2f}) below $48,000. Skipping!")
-                            last_signal = signal_hash
                             continue
                             
                         logger.info("=" * 60)
@@ -350,24 +473,23 @@ def main():
                         futures_ticks = int(setup['risk_points'] / tick_sz)
                         target_ticks = int(futures_ticks * active_config.RR_RATIO)
                         futures_ticks = max(4, futures_ticks)
-                            
-                        logger.info(f"Live Order -> Stop Loss: {futures_ticks} Ticks | Take Profit: {target_ticks} Ticks")
+                        logger.info(f"Live Order -> Stop Loss: {int(setup['risk_points'] / tick_sz)} Ticks | Take Profit: {int(setup['risk_points'] * active_config.REWARD_RISK_RATIO / tick_sz)} Ticks")
                         
                         # LIVE MODE
-                        res = topstep.place_market_order(
-                            symbol=setup['symbol'],
-                            side=setup['side'],
-                            quantity=active_config.CONTRACT_QTY,
-                            tp_ticks=target_ticks,
-                            sl_ticks=futures_ticks
-                        )
-                        if res:
+                        logger.info(f"💰 Risk: ${dollar_risk:.2f} | R:R: 1:{active_config.REWARD_RISK_RATIO}")
+                        
+                        if topstep.place_market_order(setup['symbol'], setup['side'], active_config.CONTRACT_QTY, 
+                                                      int(setup['risk_points'] * active_config.REWARD_RISK_RATIO / tick_sz), 
+                                                      int(setup['risk_points'] / tick_sz)):
                             in_position[setup['symbol']] = True
                             balance_before_trade[setup['symbol']] = balance
-                            logger.info(f"💰 Pre-trade balance snapshot: ${balance:.2f}")
-                        
-                        last_signal = signal_hash
-                        
+                            trade_state[setup['symbol']] = {
+                                'entry': df_tf.iloc[-1]['close'] if 'df_tf' in locals() else 0,
+                                'side': setup['side'],
+                                'risk': setup['risk_points'],
+                                'be_activated': False
+                            }
+                            logger.info(f"✅ Trade placed successfully for {setup['symbol']}. Pre-trade balance snapshot: ${balance:.2f}")
             any_in_pos = any(in_position[s] for s in SYMBOLS)
             if any_in_pos:
                 time.sleep(3)

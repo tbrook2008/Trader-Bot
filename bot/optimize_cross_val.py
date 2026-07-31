@@ -37,6 +37,7 @@ def build_resampled_dict(df, timeframes):
         for index, row in res_df.iterrows():
             bars.append({
                 'timestamp': index,
+                'open': row['open'],
                 'high': row['high'],
                 'low': row['low'],
                 'close': row['close'],

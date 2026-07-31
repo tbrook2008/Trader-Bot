@@ -15,10 +15,26 @@ class TopstepXClient:
         self.contract_cache = {}
         self.session = requests.Session()
 
-    def _post(self, endpoint, **kwargs):
-        """Helper to enforce timeouts on all API requests."""
+    def _post(self, endpoint, max_retries=3, **kwargs):
+        """Helper to enforce timeouts and exponential backoff on all API requests."""
+        import time
         kwargs.setdefault("timeout", 10)
-        return self.session.post(f"{self.base_url}{endpoint}", **kwargs)
+        
+        for attempt in range(max_retries):
+            try:
+                resp = self.session.post(f"{self.base_url}{endpoint}", **kwargs)
+                # Retry on 5xx server errors
+                if resp.status_code >= 500 and attempt < max_retries - 1:
+                    logger.warning(f"Topstep API {resp.status_code} on {endpoint}. Retrying in {2**attempt}s...")
+                    time.sleep(2 ** attempt)
+                    continue
+                return resp
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    logger.warning(f"Network error on {endpoint}: {e}. Retrying in {2**attempt}s...")
+                    time.sleep(2 ** attempt)
+                else:
+                    raise e
 
     def authenticate(self):
         if not self.username or not self.api_key:
@@ -243,6 +259,27 @@ class TopstepXClient:
                 logger.error(f"Error flattening position for {symbol}: {e}")
         return success_all
 
+    def cancel_orphaned_brackets(self, contract_id):
+        """Cancels any working orders for a contract when net position is 0."""
+        try:
+            start_dt = (datetime.now(timezone.utc) - timedelta(days=2)).isoformat().replace("+00:00", "Z")
+            end_dt = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+            resp = self._post("/Order/search", json={
+                "accountId": self.account_id,
+                "startTimestamp": start_dt,
+                "endTimestamp": end_dt
+            }, headers=self._get_auth_headers())
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                if data and "orders" in data:
+                    working_orders = [o for o in data["orders"] if o.get("contractId") == contract_id and o.get("status") == 1]
+                    for o in working_orders:
+                        logger.info(f"🧹 Cancelling orphaned working order {o['id']}...")
+                        self._post(f"/Order/{o['id']}/cancel", json={}, headers=self._get_auth_headers())
+        except Exception as e:
+            logger.error(f"Error checking for orphaned brackets: {e}")
+
     def get_open_positions(self, symbol):
         """Checks if there is an open position for the given symbol.
         Primary: Uses /Position/search for a direct net position check (no race condition).
@@ -271,6 +308,8 @@ class TopstepXClient:
                                 net_qty = pos.get("netSize", 0) or pos.get("quantity", 0)
                                 if net_qty != 0:
                                     return True
+                        # Position is definitely 0. Clean up any orphaned OCO brackets.
+                        self.cancel_orphaned_brackets(contract_id)
                         return False  # No open position for this contract
                 except Exception:
                     pass  # Fall through to order-based check
