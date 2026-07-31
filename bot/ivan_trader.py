@@ -105,7 +105,8 @@ def detect_ict_setup(df, symbol, config):
                                 "side": "sell",
                                 "symbol": symbol,
                                 "risk_points": risk_points,
-                                "reason": f"Bearish Sweep -> Retrace -> Rej -> FVG (Gap: {fvg_gap:.2f}, Risk: {risk_points:.2f})"
+                                "reason": f"Bearish Sweep -> Retrace -> Rej -> FVG (Gap: {fvg_gap:.2f}, Risk: {risk_points:.2f})",
+                                "timestamp": df.iloc[-1].get("timestamp", "0")
                             }
 
     # 2. Bullish Setup (Long)
@@ -131,7 +132,8 @@ def detect_ict_setup(df, symbol, config):
                                 "side": "buy",
                                 "symbol": symbol,
                                 "risk_points": risk_points,
-                                "reason": f"Bullish Sweep -> Retrace -> Rej -> FVG (Gap: {fvg_gap:.2f}, Risk: {risk_points:.2f})"
+                                "reason": f"Bullish Sweep -> Retrace -> Rej -> FVG (Gap: {fvg_gap:.2f}, Risk: {risk_points:.2f})",
+                                "timestamp": df.iloc[-1].get("timestamp", "0")
                             }
     return None
 
@@ -291,7 +293,7 @@ def main():
                         
                 # 5. Execution with Hard Floor Protection
                 if setup:
-                    signal_hash = f"{setup['side']}-{setup['symbol']}-{current_time_bucket()}-{active_config.NAME}"
+                    signal_hash = f"{setup['side']}-{setup['symbol']}-{setup.get('timestamp')}-{active_config.NAME}"
                     
                     if signal_hash != last_signal:
                         # Dynamic risk math based on INSTRUMENT_CONFIG
