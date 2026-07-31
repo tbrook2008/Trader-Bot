@@ -12,6 +12,7 @@ Logic:
 
 from typing import Optional, Dict
 from datetime import datetime, date as date_type
+import pytz
 import numpy as np
 
 class VWAPMeanReversion:
@@ -69,6 +70,24 @@ class VWAPMeanReversion:
         
         # ── EXITS ─────────────────────────────────────────────────────────────
         if self.position == 1:
+            # 0. EOD Flatten (4:00 PM ET)
+            if ts.tzinfo is None:
+                ts_utc = pytz.utc.localize(ts)
+            else:
+                ts_utc = ts
+            ts_et = ts_utc.astimezone(pytz.timezone('US/Eastern'))
+            
+            if ts_et.hour >= 16:
+                self.position = 0
+                return {
+                    "action": "EXIT",
+                    "reason": "EOD Flatten",
+                    "timestamp": ts,
+                    "price": price,
+                    "z_score": z_score,
+                    "vwap": vwap
+                }
+                
             # 1. Absolute Stop Loss
             if price <= self.entry_price * (1.0 - self.max_loss_pct):
                 self.position = 0
@@ -103,6 +122,24 @@ class VWAPMeanReversion:
                     "vwap": vwap
                 }
         elif self.position == -1:
+            # 0. EOD Flatten (4:00 PM ET)
+            if ts.tzinfo is None:
+                ts_utc = pytz.utc.localize(ts)
+            else:
+                ts_utc = ts
+            ts_et = ts_utc.astimezone(pytz.timezone('US/Eastern'))
+            
+            if ts_et.hour >= 16:
+                self.position = 0
+                return {
+                    "action": "EXIT",
+                    "reason": "EOD Flatten",
+                    "timestamp": ts,
+                    "price": price,
+                    "z_score": z_score,
+                    "vwap": vwap
+                }
+                
             # 1. Absolute Stop Loss
             if price >= self.entry_price * (1.0 + self.max_loss_pct):
                 self.position = 0
@@ -139,25 +176,34 @@ class VWAPMeanReversion:
                 
         # ── ENTRIES ───────────────────────────────────────────────────────────
         if self.position == 0:
-            if z_score < -self.entry_z:
-                self.position = 1
-                self.entry_price = price
-                return {
-                    "action": "LONG",
-                    "timestamp": ts,
-                    "price": price,
-                    "z_score": z_score,
-                    "vwap": vwap
-                }
-            elif z_score > self.entry_z:
-                self.position = -1
-                self.entry_price = price
-                return {
-                    "action": "SHORT",
-                    "timestamp": ts,
-                    "price": price,
-                    "z_score": z_score,
-                    "vwap": vwap
-                }
+            if ts.tzinfo is None:
+                ts_utc = pytz.utc.localize(ts)
+            else:
+                ts_utc = ts
+            ts_et = ts_utc.astimezone(pytz.timezone('US/Eastern'))
+            
+            is_nyse_hours = (ts_et.hour == 9 and ts_et.minute >= 30) or (10 <= ts_et.hour < 16)
+            
+            if is_nyse_hours:
+                if z_score < -self.entry_z:
+                    self.position = 1
+                    self.entry_price = price
+                    return {
+                        "action": "LONG",
+                        "timestamp": ts,
+                        "price": price,
+                        "z_score": z_score,
+                        "vwap": vwap
+                    }
+                elif z_score > self.entry_z:
+                    self.position = -1
+                    self.entry_price = price
+                    return {
+                        "action": "SHORT",
+                        "timestamp": ts,
+                        "price": price,
+                        "z_score": z_score,
+                        "vwap": vwap
+                    }
                 
         return None

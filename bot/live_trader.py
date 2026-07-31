@@ -45,7 +45,7 @@ SYMBOLS = ["SPY", "QQQ", "IWM", "MSFT", "NVDA", "AAPL", "GOOGL", "AMD", "AMZN", 
 RISK_PCT = 0.005  # 0.5% risk per trade per symbol. Max simultaneous risk = 1.5%
 
 # Dictionaries to maintain independent state per symbol
-strategies = {sym: VWAPMeanReversion(entry_z=3.0, exit_z=0.5, stop_z=4.5) for sym in SYMBOLS}
+strategies = {sym: VWAPMeanReversion(entry_z=3.5, exit_z=0.5, stop_z=5.0) for sym in SYMBOLS}
 current_positions = {sym: 0 for sym in SYMBOLS}  # 1 = LONG, -1 = SHORT, 0 = FLAT
 bar_counts = {sym: 0 for sym in SYMBOLS}
 
