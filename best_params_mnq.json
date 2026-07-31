@@ -1,0 +1,482 @@
+[
+    {
+        "params": {
+            "TIMEFRAME": 5,
+            "RR_RATIO": 3.0,
+            "LOOKBACK_BARS": 15,
+            "MIN_RISK_ATR_MULTIPLIER": 0.5,
+            "MAX_RISK_ATR_MULTIPLIER": 6.0,
+            "MIN_FVG_ATR_MULTIPLIER": 1.0,
+            "TIME_WINDOW": {
+                "name": "Full NY Session",
+                "start_h": 9,
+                "start_m": 30,
+                "end_h": 16,
+                "end_m": 0
+            }
+        },
+        "trades": 45,
+        "wins": 23,
+        "losses": 22,
+        "win_rate": 51.11111111111111,
+        "net_points": 2989.8880000000026,
+        "net_pnl": 5979.776000000005,
+        "max_dd": 4
+    },
+    {
+        "params": {
+            "TIMEFRAME": 5,
+            "RR_RATIO": 2.5,
+            "LOOKBACK_BARS": 15,
+            "MIN_RISK_ATR_MULTIPLIER": 0.5,
+            "MAX_RISK_ATR_MULTIPLIER": 5.0,
+            "MIN_FVG_ATR_MULTIPLIER": 0.25,
+            "TIME_WINDOW": {
+                "name": "Full NY Session",
+                "start_h": 9,
+                "start_m": 30,
+                "end_h": 16,
+                "end_m": 0
+            }
+        },
+        "trades": 136,
+        "wins": 56,
+        "losses": 80,
+        "win_rate": 41.17647058823529,
+        "net_points": 2961.934000000041,
+        "net_pnl": 5923.868000000082,
+        "max_dd": 5
+    },
+    {
+        "params": {
+            "TIMEFRAME": 5,
+            "RR_RATIO": 2.5,
+            "LOOKBACK_BARS": 15,
+            "MIN_RISK_ATR_MULTIPLIER": 0.5,
+            "MAX_RISK_ATR_MULTIPLIER": 6.0,
+            "MIN_FVG_ATR_MULTIPLIER": 0.25,
+            "TIME_WINDOW": {
+                "name": "Full NY Session",
+                "start_h": 9,
+                "start_m": 30,
+                "end_h": 16,
+                "end_m": 0
+            }
+        },
+        "trades": 136,
+        "wins": 56,
+        "losses": 80,
+        "win_rate": 41.17647058823529,
+        "net_points": 2951.134000000038,
+        "net_pnl": 5902.268000000076,
+        "max_dd": 5
+    },
+    {
+        "params": {
+            "TIMEFRAME": 5,
+            "RR_RATIO": 3.0,
+            "LOOKBACK_BARS": 15,
+            "MIN_RISK_ATR_MULTIPLIER": 0.5,
+            "MAX_RISK_ATR_MULTIPLIER": 5.0,
+            "MIN_FVG_ATR_MULTIPLIER": 1.0,
+            "TIME_WINDOW": {
+                "name": "Full NY Session",
+                "start_h": 9,
+                "start_m": 30,
+                "end_h": 16,
+                "end_m": 0
+            }
+        },
+        "trades": 45,
+        "wins": 23,
+        "losses": 22,
+        "win_rate": 51.11111111111111,
+        "net_points": 2812.900000000016,
+        "net_pnl": 5625.800000000032,
+        "max_dd": 4
+    },
+    {
+        "params": {
+            "TIMEFRAME": 5,
+            "RR_RATIO": 1.5,
+            "LOOKBACK_BARS": 30,
+            "MIN_RISK_ATR_MULTIPLIER": 0.5,
+            "MAX_RISK_ATR_MULTIPLIER": 4.0,
+            "MIN_FVG_ATR_MULTIPLIER": 1.0,
+            "TIME_WINDOW": {
+                "name": "Full NY Session",
+                "start_h": 9,
+                "start_m": 30,
+                "end_h": 16,
+                "end_m": 0
+            }
+        },
+        "trades": 82,
+        "wins": 49,
+        "losses": 33,
+        "win_rate": 59.756097560975604,
+        "net_points": 2609.9220000000205,
+        "net_pnl": 5219.844000000041,
+        "max_dd": 5
+    },
+    {
+        "params": {
+            "TIMEFRAME": 10,
+            "RR_RATIO": 1.0,
+            "LOOKBACK_BARS": 20,
+            "MIN_RISK_ATR_MULTIPLIER": 0.5,
+            "MAX_RISK_ATR_MULTIPLIER": 4.0,
+            "MIN_FVG_ATR_MULTIPLIER": 0.25,
+            "TIME_WINDOW": {
+                "name": "Full NY Session",
+                "start_h": 9,
+                "start_m": 30,
+                "end_h": 16,
+                "end_m": 0
+            }
+        },
+        "trades": 170,
+        "wins": 102,
+        "losses": 68,
+        "win_rate": 60.0,
+        "net_points": 2515.948000000066,
+        "net_pnl": 5031.896000000132,
+        "max_dd": 4
+    },
+    {
+        "params": {
+            "TIMEFRAME": 5,
+            "RR_RATIO": 1.5,
+            "LOOKBACK_BARS": 15,
+            "MIN_RISK_ATR_MULTIPLIER": 0.5,
+            "MAX_RISK_ATR_MULTIPLIER": 6.0,
+            "MIN_FVG_ATR_MULTIPLIER": 1.0,
+            "TIME_WINDOW": {
+                "name": "Full NY Session",
+                "start_h": 9,
+                "start_m": 30,
+                "end_h": 16,
+                "end_m": 0
+            }
+        },
+        "trades": 80,
+        "wins": 45,
+        "losses": 35,
+        "win_rate": 56.25,
+        "net_points": 2493.9619999999923,
+        "net_pnl": 4987.9239999999845,
+        "max_dd": 4
+    },
+    {
+        "params": {
+            "TIMEFRAME": 5,
+            "RR_RATIO": 1.5,
+            "LOOKBACK_BARS": 30,
+            "MIN_RISK_ATR_MULTIPLIER": 0.5,
+            "MAX_RISK_ATR_MULTIPLIER": 5.0,
+            "MIN_FVG_ATR_MULTIPLIER": 1.0,
+            "TIME_WINDOW": {
+                "name": "Full NY Session",
+                "start_h": 9,
+                "start_m": 30,
+                "end_h": 16,
+                "end_m": 0
+            }
+        },
+        "trades": 82,
+        "wins": 48,
+        "losses": 34,
+        "win_rate": 58.536585365853654,
+        "net_points": 2431.676000000003,
+        "net_pnl": 4863.352000000006,
+        "max_dd": 5
+    },
+    {
+        "params": {
+            "TIMEFRAME": 5,
+            "RR_RATIO": 2.0,
+            "LOOKBACK_BARS": 20,
+            "MIN_RISK_ATR_MULTIPLIER": 0.5,
+            "MAX_RISK_ATR_MULTIPLIER": 5.0,
+            "MIN_FVG_ATR_MULTIPLIER": 1.0,
+            "TIME_WINDOW": {
+                "name": "Full NY Session",
+                "start_h": 9,
+                "start_m": 30,
+                "end_h": 16,
+                "end_m": 0
+            }
+        },
+        "trades": 70,
+        "wins": 34,
+        "losses": 36,
+        "win_rate": 48.57142857142857,
+        "net_points": 2397.743999999999,
+        "net_pnl": 4795.487999999998,
+        "max_dd": 5
+    },
+    {
+        "params": {
+            "TIMEFRAME": 3,
+            "RR_RATIO": 1.5,
+            "LOOKBACK_BARS": 20,
+            "MIN_RISK_ATR_MULTIPLIER": 0.5,
+            "MAX_RISK_ATR_MULTIPLIER": 6.0,
+            "MIN_FVG_ATR_MULTIPLIER": 0.5,
+            "TIME_WINDOW": {
+                "name": "Full NY Session",
+                "start_h": 9,
+                "start_m": 30,
+                "end_h": 16,
+                "end_m": 0
+            }
+        },
+        "trades": 286,
+        "wins": 135,
+        "losses": 151,
+        "win_rate": 47.2027972027972,
+        "net_points": 2340.0700000000434,
+        "net_pnl": 4680.140000000087,
+        "max_dd": 5
+    },
+    {
+        "params": {
+            "TIMEFRAME": 3,
+            "RR_RATIO": 1.5,
+            "LOOKBACK_BARS": 20,
+            "MIN_RISK_ATR_MULTIPLIER": 0.5,
+            "MAX_RISK_ATR_MULTIPLIER": 5.0,
+            "MIN_FVG_ATR_MULTIPLIER": 0.5,
+            "TIME_WINDOW": {
+                "name": "Full NY Session",
+                "start_h": 9,
+                "start_m": 30,
+                "end_h": 16,
+                "end_m": 0
+            }
+        },
+        "trades": 284,
+        "wins": 134,
+        "losses": 150,
+        "win_rate": 47.183098591549296,
+        "net_points": 2188.946000000047,
+        "net_pnl": 4377.892000000094,
+        "max_dd": 5
+    },
+    {
+        "params": {
+            "TIMEFRAME": 10,
+            "RR_RATIO": 1.0,
+            "LOOKBACK_BARS": 20,
+            "MIN_RISK_ATR_MULTIPLIER": 0.5,
+            "MAX_RISK_ATR_MULTIPLIER": 6.0,
+            "MIN_FVG_ATR_MULTIPLIER": 0.1,
+            "TIME_WINDOW": {
+                "name": "Full NY Session",
+                "start_h": 9,
+                "start_m": 30,
+                "end_h": 16,
+                "end_m": 0
+            }
+        },
+        "trades": 224,
+        "wins": 130,
+        "losses": 94,
+        "win_rate": 58.03571428571429,
+        "net_points": 2182.6680000000633,
+        "net_pnl": 4365.336000000127,
+        "max_dd": 5
+    },
+    {
+        "params": {
+            "TIMEFRAME": 5,
+            "RR_RATIO": 3.0,
+            "LOOKBACK_BARS": 30,
+            "MIN_RISK_ATR_MULTIPLIER": 0.5,
+            "MAX_RISK_ATR_MULTIPLIER": 5.0,
+            "MIN_FVG_ATR_MULTIPLIER": 1.0,
+            "TIME_WINDOW": {
+                "name": "Full NY Session",
+                "start_h": 9,
+                "start_m": 30,
+                "end_h": 16,
+                "end_m": 0
+            }
+        },
+        "trades": 43,
+        "wins": 18,
+        "losses": 25,
+        "win_rate": 41.86046511627907,
+        "net_points": 2167.2520000000004,
+        "net_pnl": 4334.504000000001,
+        "max_dd": 5
+    },
+    {
+        "params": {
+            "TIMEFRAME": 15,
+            "RR_RATIO": 3.0,
+            "LOOKBACK_BARS": 10,
+            "MIN_RISK_ATR_MULTIPLIER": 0.5,
+            "MAX_RISK_ATR_MULTIPLIER": 4.0,
+            "MIN_FVG_ATR_MULTIPLIER": 0.1,
+            "TIME_WINDOW": {
+                "name": "Full NY Session",
+                "start_h": 9,
+                "start_m": 30,
+                "end_h": 16,
+                "end_m": 0
+            }
+        },
+        "trades": 60,
+        "wins": 24,
+        "losses": 36,
+        "win_rate": 40.0,
+        "net_points": 2154.3080000000336,
+        "net_pnl": 4308.616000000067,
+        "max_dd": 5
+    },
+    {
+        "params": {
+            "TIMEFRAME": 5,
+            "RR_RATIO": 3.0,
+            "LOOKBACK_BARS": 20,
+            "MIN_RISK_ATR_MULTIPLIER": 0.5,
+            "MAX_RISK_ATR_MULTIPLIER": 5.0,
+            "MIN_FVG_ATR_MULTIPLIER": 1.0,
+            "TIME_WINDOW": {
+                "name": "Full NY Session",
+                "start_h": 9,
+                "start_m": 30,
+                "end_h": 16,
+                "end_m": 0
+            }
+        },
+        "trades": 47,
+        "wins": 20,
+        "losses": 27,
+        "win_rate": 42.5531914893617,
+        "net_points": 2145.9880000000085,
+        "net_pnl": 4291.976000000017,
+        "max_dd": 5
+    },
+    {
+        "params": {
+            "TIMEFRAME": 5,
+            "RR_RATIO": 1.0,
+            "LOOKBACK_BARS": 20,
+            "MIN_RISK_ATR_MULTIPLIER": 0.5,
+            "MAX_RISK_ATR_MULTIPLIER": 6.0,
+            "MIN_FVG_ATR_MULTIPLIER": 1.0,
+            "TIME_WINDOW": {
+                "name": "Full NY Session",
+                "start_h": 9,
+                "start_m": 30,
+                "end_h": 16,
+                "end_m": 0
+            }
+        },
+        "trades": 102,
+        "wins": 64,
+        "losses": 38,
+        "win_rate": 62.745098039215684,
+        "net_points": 2120.863999999987,
+        "net_pnl": 4241.727999999974,
+        "max_dd": 5
+    },
+    {
+        "params": {
+            "TIMEFRAME": 5,
+            "RR_RATIO": 2.5,
+            "LOOKBACK_BARS": 20,
+            "MIN_RISK_ATR_MULTIPLIER": 0.5,
+            "MAX_RISK_ATR_MULTIPLIER": 5.0,
+            "MIN_FVG_ATR_MULTIPLIER": 1.0,
+            "TIME_WINDOW": {
+                "name": "Full NY Session",
+                "start_h": 9,
+                "start_m": 30,
+                "end_h": 16,
+                "end_m": 0
+            }
+        },
+        "trades": 55,
+        "wins": 25,
+        "losses": 30,
+        "win_rate": 45.45454545454545,
+        "net_points": 2095.8500000000276,
+        "net_pnl": 4191.700000000055,
+        "max_dd": 5
+    },
+    {
+        "params": {
+            "TIMEFRAME": 5,
+            "RR_RATIO": 1.5,
+            "LOOKBACK_BARS": 15,
+            "MIN_RISK_ATR_MULTIPLIER": 0.5,
+            "MAX_RISK_ATR_MULTIPLIER": 5.0,
+            "MIN_FVG_ATR_MULTIPLIER": 1.0,
+            "TIME_WINDOW": {
+                "name": "Full NY Session",
+                "start_h": 9,
+                "start_m": 30,
+                "end_h": 16,
+                "end_m": 0
+            }
+        },
+        "trades": 82,
+        "wins": 44,
+        "losses": 38,
+        "win_rate": 53.65853658536586,
+        "net_points": 2077.667999999994,
+        "net_pnl": 4155.335999999988,
+        "max_dd": 4
+    },
+    {
+        "params": {
+            "TIMEFRAME": 5,
+            "RR_RATIO": 1.5,
+            "LOOKBACK_BARS": 30,
+            "MIN_RISK_ATR_MULTIPLIER": 0.5,
+            "MAX_RISK_ATR_MULTIPLIER": 6.0,
+            "MIN_FVG_ATR_MULTIPLIER": 1.0,
+            "TIME_WINDOW": {
+                "name": "Full NY Session",
+                "start_h": 9,
+                "start_m": 30,
+                "end_h": 16,
+                "end_m": 0
+            }
+        },
+        "trades": 87,
+        "wins": 48,
+        "losses": 39,
+        "win_rate": 55.172413793103445,
+        "net_points": 2064.340000000004,
+        "net_pnl": 4128.680000000008,
+        "max_dd": 5
+    },
+    {
+        "params": {
+            "TIMEFRAME": 10,
+            "RR_RATIO": 1.0,
+            "LOOKBACK_BARS": 15,
+            "MIN_RISK_ATR_MULTIPLIER": 0.5,
+            "MAX_RISK_ATR_MULTIPLIER": 4.0,
+            "MIN_FVG_ATR_MULTIPLIER": 0.25,
+            "TIME_WINDOW": {
+                "name": "Morning Sniper",
+                "start_h": 8,
+                "start_m": 30,
+                "end_h": 11,
+                "end_m": 30
+            }
+        },
+        "trades": 109,
+        "wins": 68,
+        "losses": 41,
+        "win_rate": 62.38532110091744,
+        "net_points": 2028.3799999999865,
+        "net_pnl": 4056.759999999973,
+        "max_dd": 3
+    }
+]

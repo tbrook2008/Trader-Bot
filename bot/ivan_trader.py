@@ -143,7 +143,8 @@ def get_eastern_time():
 def main():
     global consecutive_losses, in_position, balance_before_trade
     
-    logger.info("🦅 IvanTrades Automated Execution Bot Started (Multi-Asset Engine - LIVE V1)")
+    logger.info("🦅 IvanTrades Automated Execution Bot Started (Multi-Asset V2 Sandbox)")
+    logger.info("⚠️ V2 OFFLINE MODE: Trades will be logged but NOT submitted to Topstep.")
     
     if not topstep.authenticate():
         logger.error("Could not authenticate Topstep. Check .env keys.")
@@ -308,7 +309,7 @@ def main():
                             continue
                             
                         logger.info("=" * 60)
-                        logger.info(f"🚨 EXECUTING TRADE: {setup['side'].upper()} {setup['symbol']} | Strategy: {active_config.NAME}")
+                        logger.info(f"🚨 [OFFLINE V2] THEORETICAL TRADE: {setup['side'].upper()} {setup['symbol']} | Strategy: {active_config.NAME}")
                         logger.info(f"📝 Setup: {setup['reason']}")
                         
                         futures_ticks = int(setup['risk_points'] / tick_sz)
@@ -317,17 +318,11 @@ def main():
                             
                         logger.info(f"Theoretical Order -> Stop Loss: {futures_ticks} Ticks | Take Profit: {target_ticks} Ticks")
                         
-                        # Execute Trade
-                        res = topstep.place_market_order(
-                            symbol=setup['symbol'],
-                            side=setup['side'],
-                            quantity=active_config.CONTRACT_QTY,
-                            tp_ticks=target_ticks,
-                            sl_ticks=futures_ticks
-                        )
-                        if res:
-                            in_position[setup['symbol']] = True
-                            balance_before_trade[setup['symbol']] = balance
+                        # OFFLINE MODE: DO NOT CALL PLACE_MARKET_ORDER
+                        # res = topstep.place_market_order(...)
+                        # if res:
+                        #     in_position[setup['symbol']] = True
+                        #     balance_before_trade[setup['symbol']] = balance
                         
                         last_signal = signal_hash
                         
