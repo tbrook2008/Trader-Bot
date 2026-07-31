@@ -1,71 +1,103 @@
-# Python Alpaca Trader — Context for Future AI Agents
+# V2 Python/Topstep ATR-Based ICT Bot Architecture Context
 
-This document provides essential context for any AI agent continuing development or maintenance of this system. Read this **before** making any changes.
+## 1. Project Vision
+Python autonomous ICT trading bot for $50K Topstep Combine. Refactored from a Node.js prototype into a highly robust Python V2 architecture to maximize reliability, handle direct API execution, and implement strict prop firm risk management.
 
----
+## 2. Current Architecture (V2) - Data Flow
+*   **Authentication & Market Data:** `TopstepXClient` authenticates via `/Auth/loginKey` (handling 401 token expiry automatically) and fetches live/historical bars directly via `/History/retrieveBars`.
+*   **Execution Core:** `bot/ivan_trader.py` runs `HOLY_GRAIL_CONFIGS` which applies per-symbol, ATR-normalized `BotConfig` definitions during specified `TIME_WINDOW`s.
+*   **ICT Setup Detection:** Uses a precise structural pattern: Sweep -> Retrace -> Rejection -> FVG. 
+    *   **ATR-Normalized:** Minimum FVG gap and risk bounds are calculated as multipliers of a 14-period ATR (rather than fixed points).
+*   **Correlation & Exposure:** Pre-trade checks against `INSTRUMENT_CONFIG` block new entries if the bot already has an open position in the same sector (e.g., `equity_index`).
+*   **Deduplication:** FVG timestamp-based hashing (`side-symbol-timestamp-configNAME`) prevents revenge trading or double-entries on the same setup.
+*   **News Filter:** `bot/news_filter.py` parses the ForexFactory XML feed, converted to US/Eastern, dynamically tracking USD High Impact (Red Folder) events.
+*   **Order Execution:** Submits market bracket orders (entry, SL, TP) directly to Topstep via `/Order/place`.
+*   **Position Tracking:** Real-time net position validation primarily via `/Position/search`, with a robust fallback to `/Order/search` working orders if the position endpoint fails.
 
-## Project Vision & Evolution
+## 3. Strategy Details (HOLY_GRAIL_CONFIGS)
+Active primarily on Micro E-Mini Futures with Full NY Session exposure:
 
-This project originally started as a Node.js-based application targeting Topstep Prop Firms with complex LLM (Ollama/Gemini) integration. **That architecture has been deprecated and archived.** 
+*   **MNQ (Micro Nasdaq):**
+    *   Strategy: `MNQ Full NY`
+    *   Timeframe: 5 min
+    *   Lookback: 15 bars
+    *   Risk/Reward: 3.0
+    *   Risk Bounds: 0.5x to 6.0x ATR
+    *   Min FVG Size: 1.0x ATR
+    *   Time Window: 09:30 - 16:00 ET
 
-The current system is a **pure Python** quantitative trading engine integrated directly with **Alpaca**. It is designed to be fully autonomous, executing deterministic mathematical strategies without LLM overhead.
+*   **MES (Micro S&P 500):**
+    *   Strategy: `MES Full NY`
+    *   Timeframe: 10 min
+    *   Lookback: 20 bars
+    *   Risk/Reward: 3.0
+    *   Risk Bounds: 0.5x to 6.0x ATR
+    *   Min FVG Size: 0.1x ATR
+    *   Time Window: 09:30 - 16:00 ET
 
----
+## 4. INSTRUMENT_CONFIG
 
-## Current Architecture
+| Symbol | Sector | Tick Size | Tick Value | Point Value | Sniper Window (ET) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **MNQ** | `equity_index` | 0.25 | $0.50 | $2.00 | 13:00 - 15:30 |
+| **MES** | `equity_index` | 0.25 | $1.25 | $5.00 | 13:00 - 15:30 |
+| **MYM** | `equity_index` | 1.00 | $0.50 | $0.50 | 13:00 - 15:30 |
+| **M2K** | `equity_index` | 0.10 | $0.50 | $5.00 | 13:00 - 15:30 |
+| **NQ** | `equity_index` | 0.25 | $5.00 | $20.00 | 13:00 - 15:30 |
+| **ES** | `equity_index` | 0.25 | $12.50 | $50.00 | 13:00 - 15:30 |
+| **GC** | `metals` | 0.10 | $10.00 | $100.00 | 08:00 - 10:00 |
+| **CL** | `energy` | 0.01 | $10.00 | $1000.00| 09:00 - 11:30 |
 
-The codebase is built on three core pillars:
+## 5. Risk Management Layers (Order of Precedence)
+1.  **$48,000 Hard Floor:** If account equity dips below $48K, permanent shutdown prevents combine failure.
+2.  **$53,000 Goal:** If balance >= $53,000, combine is passed, permanent shutdown.
+3.  **$1,450 Daily Profit Cap:** Halts execution to lock in daily wins; resumes the next trading day.
+4.  **MAX_CONSECUTIVE_LOSSES = 3:** Pauses bot execution until the next trading day (does NOT permanently exit).
+5.  **EOD Liquidation:** Hard stop at 4:45 PM ET flattens all open positions and cancels working orders to comply with Topstep rules.
+6.  **News Blackout:** Auto-flattens and halts entries 10 minutes before and 15 minutes after USD High Impact events.
+7.  **Pre-Trade Dollar Risk Check:** Verifies that a generated signal's absolute dollar risk won't breach the $48K hard floor before entering.
+8.  **Sector Exposure Block:** Prevents correlated overlapping trades (e.g., won't enter MNQ if already long MES).
 
-1. **Market Data Streaming (`bot/live_trader.py`)**
-   - Connects to Alpaca's `wss://stream.data.alpaca.markets/v2/iex`.
-   - Subscribes to 1-minute bars for a configurable basket of equities (e.g., SPY, QQQ, NVDA).
-   - Feeds incoming bars synchronously into the strategy engine.
+## 6. Key Files Table
+| File | Path | Description |
+| :--- | :--- | :--- |
+| **Execution Core** | `bot/ivan_trader.py` | Main loop, setup detection, risk checks. |
+| **Topstep API Client** | `bot/execution/topstep_client.py` | Handles authentication, market data, and order routing. |
+| **Instrument Config** | `bot/instrument_config.py` | Defines tick sizes, point values, and sectors for symbol matrix. |
+| **News Filter** | `bot/news_filter.py` | ForexFactory XML parser and blackout logic. |
+| **Global Config** | `bot/config.py` | Global tunable parameters (legacy Alpaca vars exist but V2 uses Topstep direct). |
+| **Documentation** | `README.md` | General project overview. |
 
-2. **Strategy Engine (`bot/strategy/mean_reversion.py`)**
-   - **VWAP Calculation:** Maintains a cumulative Volume Weighted Average Price for each symbol, resetting at the start of each trading day (09:30 AM ET).
-   - **Z-Score Trigger:** Calculates the standard deviation of the asset's price from its VWAP.
-   - **Signals:** Fires a `LONG` signal when Z-Score < -2.0, and a `SHORT` signal when Z-Score > 2.0. Signals `EXIT` when the Z-Score reverts to the opposite side of the mean.
-
-3. **Execution Manager (`bot/execution/execution_manager.py`)**
-   - **Dynamic Margin Sizing:** Queries `trading_client.get_account()` live to determine current equity and buying power. Sizes positions to risk exactly 0.5% of total equity.
-   - **Order Routing:** Safely converts logic signals into Alpaca `MarketOrderRequest` payloads.
-   - **Hybrid Safety Brackets:** Since Alpaca does not support trailing stops inside brackets, the bot injects a wide OCO bracket (+10% Target, -5% Stop Loss) along with the market entry. This rests on the exchange as a catastrophic fail-safe in case the VPS disconnects. Normal exits are handled dynamically by the strategy engine, which cleanly cancels the safety bracket upon closing the position.
-
----
-
-## Key Files
-
-| File | Purpose |
-|------|---------|
-| `bot/live_trader.py` | Entry point. Establishes the WebSocket connection and orchestrates data flow. |
-| `bot/strategy/mean_reversion.py` | Core mathematical engine (VWAP, standard deviation, Z-Score). |
-| `bot/execution/execution_manager.py` | Bridges strategy signals to live Alpaca orders, calculates sizing, manages safety brackets. |
-| `run_backtest.py` | Backtester evaluating strategy performance across historical data. |
-| `run_options_test.py` | Dedicated backtester for mapping equity signals to Options contract data. |
-| `archive/` | Contains all legacy Node.js and Topstep-related code. Do not use. |
-
----
-
-## Deployment & Hosting
-
-The bot is currently deployed on a remote Linux VPS (DigitalOcean). 
-
-**Lifecycle Management:**
-The bot is daemonized using **PM2**. It must be run with the proper `PYTHONPATH` context to locate the `bot/` module.
-
+## 7. Running the Bot
 ```bash
-# Correct way to restart the bot on the VPS:
-cd /root/trader_bot
+cd Desktop/topstep-trader-bot-v2
 export PYTHONPATH=.
-pm2 restart python-trader || pm2 start ./venv/bin/python3 --name python-trader --interpreter none -- -u -m bot.live_trader
+python3 -m bot.ivan_trader
 ```
 
-**Connection Limits:**
-Alpaca enforces a strict limit of **1 active WebSocket connection** per account. If you attempt to run `python3 -m bot.live_trader` locally while the VPS is running, one of them will crash with `ValueError: connection limit exceeded`.
+## 8. Topstep API Endpoints Used
+*   `/Auth/loginKey`
+*   `/Account/search`
+*   `/Contract/search`
+*   `/History/retrieveBars`
+*   `/Order/place`
+*   `/Order/search`
+*   `/Order/cancel`
+*   `/Position/search`
+*   `/Position/closeContract`
 
----
+## 9. Environment Variables
+Stored in `.env`:
+*   `TOPSTEPX_USERNAME`
+*   `TOPSTEPX_API_KEY`
+*   `TOPSTEPX_API_URL` (Optional, defaults to `https://api.topstepx.com/api`)
 
-## Known Limitations
+## 10. Standing Protocol
+*   **Before any change:** Read `context.md` to understand system constraints.
+*   **After any change:** Update `context.md`, commit with descriptive message, push to git.
 
-- **Options Data Restrictions:** The `run_options_test.py` backtester is fully functional, but the Alpaca Free Tier API keys block access to historical SIP options data. The user must upgrade to a paid data plan (e.g., Alpaca Data Plus) to execute options backtests.
-- **Crypto Shorting:** Alpaca does not allow shorting of cryptocurrencies. If crypto pairs are added to the symbol basket, the Execution Manager must be updated to ignore `SHORT` signals for those specific assets.
+## 11. Known Issues / Gotchas
+*   **Token Expiry:** Topstep JWTs expire. `TopstepXClient` gracefully catches 401s on endpoints (bars, positions, orders) and re-authenticates automatically.
+*   **Position Check Race Conditions:** `/Position/search` is the source of truth, but it can sometimes lag or fail. The client uses an order-based fallback search (`/Order/search`) to infer positions if the primary endpoint acts up.
+*   **Trailing Stops:** Full bracket replacement is tricky; current implementation cancels the old stop-loss order but relies on the underlying logic to track intended new levels.
+*   **News Filter Timestamps:** ForexFactory returns times in UTC, which the bot must accurately convert and localize to US/Eastern (`pytz.timezone('US/Eastern')`) to align with Topstep exchange time.
