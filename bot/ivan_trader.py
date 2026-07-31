@@ -106,7 +106,7 @@ def detect_ict_setup(df, symbol, config):
                                 "symbol": symbol,
                                 "risk_points": risk_points,
                                 "reason": f"Bearish Sweep -> Retrace -> Rej -> FVG (Gap: {fvg_gap:.2f}, Risk: {risk_points:.2f})",
-                                "timestamp": df.iloc[-1].get("timestamp", "0")
+                                "timestamp": recent_bars.loc[i+2, 'timestamp'] if 'timestamp' in recent_bars.columns else df.iloc[-1].get("timestamp", "0")
                             }
 
     # 2. Bullish Setup (Long)
@@ -133,7 +133,7 @@ def detect_ict_setup(df, symbol, config):
                                 "symbol": symbol,
                                 "risk_points": risk_points,
                                 "reason": f"Bullish Sweep -> Retrace -> Rej -> FVG (Gap: {fvg_gap:.2f}, Risk: {risk_points:.2f})",
-                                "timestamp": df.iloc[-1].get("timestamp", "0")
+                                "timestamp": recent_bars.loc[i+2, 'timestamp'] if 'timestamp' in recent_bars.columns else df.iloc[-1].get("timestamp", "0")
                             }
     return None
 
