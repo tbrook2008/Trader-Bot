@@ -13,7 +13,7 @@ Logic:
 from typing import Optional, Dict
 from datetime import datetime, date as date_type
 import pytz
-import numpy as np
+import math
 
 class VWAPMeanReversion:
     
@@ -27,7 +27,9 @@ class VWAPMeanReversion:
         self.current_date = None
         self.cumulative_pv = 0.0
         self.cumulative_vol = 0.0
-        self.prices_today = []
+        self.prices_n = 0
+        self.prices_sum = 0.0
+        self.prices_sq_sum = 0.0
         
         self.position = 0 # 1 = LONG, -1 = SHORT, 0 = FLAT
         self.entry_price = 0.0
@@ -50,17 +52,27 @@ class VWAPMeanReversion:
             self.current_date = bar_date
             self.cumulative_pv = 0.0
             self.cumulative_vol = 0.0
-            self.prices_today = []
+            self.prices_n = 0
+            self.prices_sum = 0.0
+            self.prices_sq_sum = 0.0
             
         self.cumulative_pv += (typical_price * vol)
         self.cumulative_vol += vol
-        self.prices_today.append(price)
+        self.prices_n += 1
+        self.prices_sum += price
+        self.prices_sq_sum += (price * price)
         
-        if self.cumulative_vol == 0 or len(self.prices_today) < 30:
+        if self.cumulative_vol == 0 or self.prices_n < 30:
             return None # Need at least 30 minutes of data to establish a solid VWAP and StdDev
             
         vwap = self.cumulative_pv / self.cumulative_vol
-        std = np.std(self.prices_today)
+        
+        # Calculate running variance: E[X^2] - (E[X])^2
+        mean_price = self.prices_sum / self.prices_n
+        variance = (self.prices_sq_sum / self.prices_n) - (mean_price * mean_price)
+        if variance < 0:
+            variance = 0.0
+        std = math.sqrt(variance)
         
         if std == 0:
             return None

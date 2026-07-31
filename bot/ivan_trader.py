@@ -1,10 +1,14 @@
 import os
+import sys
 import time
 import pandas as pd
 from datetime import datetime
 from dotenv import load_dotenv
 import logging
 import pytz
+
+# Ensure the parent directory is in the Python path so 'from bot...' imports work
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from bot.execution.topstep_client import TopstepXClient
 from bot.news_filter import NewsFilter
@@ -18,7 +22,7 @@ load_dotenv()
 topstep = TopstepXClient()
 
 # Directly scan the futures symbols now!
-SYMBOLS = ["MNQ", "MES"]
+SYMBOLS = ["MNQ", "MES", "MYM"]
 
 class BaseConfig:
     # 2. Risk Management
@@ -28,19 +32,43 @@ class BaseConfig:
     TRAILING_ACTIVATION_RR = 1.0
 
 class BotConfig(BaseConfig):
-    def __init__(self, name, timeframe, lookback, rr_ratio, min_risk, max_risk, min_fvg, window):
-        self.NAME = name
-        self.TIMEFRAME = timeframe
-        self.LOOKBACK_BARS = lookback
-        self.RR_RATIO = rr_ratio
-        self.MIN_RISK_ATR_MULTIPLIER = min_risk
-        self.MAX_RISK_ATR_MULTIPLIER = max_risk
-        self.MIN_FVG_ATR_MULTIPLIER = min_fvg
-        self.TIME_WINDOW = window
+    def __init__(self, TIMEFRAME, LOOKBACK_BARS, RR_RATIO, MIN_RISK_ATR_MULTIPLIER, MAX_RISK_ATR_MULTIPLIER, MIN_FVG_ATR_MULTIPLIER, TIME_WINDOW):
+        self.TIMEFRAME = TIMEFRAME
+        self.LOOKBACK_BARS = LOOKBACK_BARS
+        self.RR_RATIO = RR_RATIO
+        self.MIN_RISK_ATR_MULTIPLIER = MIN_RISK_ATR_MULTIPLIER
+        self.MAX_RISK_ATR_MULTIPLIER = MAX_RISK_ATR_MULTIPLIER
+        self.MIN_FVG_ATR_MULTIPLIER = MIN_FVG_ATR_MULTIPLIER
+        self.TIME_WINDOW = TIME_WINDOW
 
 HOLY_GRAIL_CONFIGS = {
-    "MNQ": BotConfig("MNQ Full NY", 5, 15, 3.0, 0.5, 6.0, 1.0, {"start_h": 9, "start_m": 30, "end_h": 16, "end_m": 0}),
-    "MES": BotConfig("MES Full NY", 10, 20, 3.0, 0.5, 6.0, 0.1, {"start_h": 9, "start_m": 30, "end_h": 16, "end_m": 0})
+    "MNQ": BotConfig(
+        TIMEFRAME=10,
+        RR_RATIO=1.0,
+        LOOKBACK_BARS=20,
+        MIN_RISK_ATR_MULTIPLIER=0.5,
+        MAX_RISK_ATR_MULTIPLIER=6.0,
+        MIN_FVG_ATR_MULTIPLIER=0.25,
+        TIME_WINDOW={"start_h": 13, "start_m": 0, "end_h": 15, "end_m": 30}
+    ),
+    "MES": BotConfig(
+        TIMEFRAME=2,
+        RR_RATIO=1.5,
+        LOOKBACK_BARS=10,
+        MIN_RISK_ATR_MULTIPLIER=0.5,
+        MAX_RISK_ATR_MULTIPLIER=6.0,
+        MIN_FVG_ATR_MULTIPLIER=1.0,
+        TIME_WINDOW={"start_h": 13, "start_m": 0, "end_h": 15, "end_m": 30}
+    ),
+    "MYM": BotConfig(
+        TIMEFRAME=15,
+        RR_RATIO=1.5,
+        LOOKBACK_BARS=10,
+        MIN_RISK_ATR_MULTIPLIER=0.5,
+        MAX_RISK_ATR_MULTIPLIER=3.0,
+        MIN_FVG_ATR_MULTIPLIER=1.0,
+        TIME_WINDOW={"start_h": 13, "start_m": 0, "end_h": 15, "end_m": 30}
+    )
 }
 
 consecutive_losses = 0
@@ -146,7 +174,8 @@ def get_eastern_time():
 def main():
     global consecutive_losses, in_position, balance_before_trade
     
-    logger.info("🦅 IvanTrades Automated Execution Bot Started (Multi-Asset V2)")
+    logger.info("🦅 IvanTrades Automated Execution Bot Started (Multi-Asset V2 LIVE)")
+    logger.info("🟢 LIVE MODE ACTIVE: Trades will be sent directly to Topstep.")
     
     if not topstep.authenticate():
         logger.error("Could not authenticate Topstep. Check .env keys.")
@@ -275,17 +304,7 @@ def main():
                 if in_position[symbol]:
                     continue
                     
-                # Correlation Sector Exposure Check
-                if symbol in INSTRUMENT_CONFIG:
-                    sym_sector = INSTRUMENT_CONFIG[symbol]["sector"]
-                    sector_blocked = False
-                    for other_sym in SYMBOLS:
-                        if in_position[other_sym] and other_sym in INSTRUMENT_CONFIG and INSTRUMENT_CONFIG[other_sym]["sector"] == sym_sector:
-                            sector_blocked = True
-                            break
-                    if sector_blocked:
-                        continue
-                    
+                # Sector Correlation Check has been removed to allow concurrent trades
                 setup = None
                 active_config = HOLY_GRAIL_CONFIGS.get(symbol)
                 
@@ -310,7 +329,7 @@ def main():
                         
                 # 5. Execution with Hard Floor Protection
                 if setup:
-                    signal_hash = f"{setup['side']}-{setup['symbol']}-{setup.get('timestamp')}-{active_config.NAME}"
+                    signal_hash = f"{setup['side']}-{setup['symbol']}-{setup.get('timestamp')}-HolyGrail"
                     
                     if signal_hash != last_signal:
                         # Dynamic risk math based on INSTRUMENT_CONFIG
@@ -320,20 +339,21 @@ def main():
                         dollar_risk = setup['risk_points'] * point_val * active_config.CONTRACT_QTY
                         
                         if (balance - dollar_risk) < 48000:
-                            logger.warning(f"🛡️ SAFETY PROTECT: {active_config.NAME} signalled trade, but risking ${dollar_risk:.2f} would drop balance (${balance:.2f}) below $48,000. Skipping!")
+                            logger.warning(f"🛡️ SAFETY PROTECT: Holy Grail signalled trade, but risking ${dollar_risk:.2f} would drop balance (${balance:.2f}) below $48,000. Skipping!")
                             last_signal = signal_hash
                             continue
                             
                         logger.info("=" * 60)
-                        logger.info(f"🚨 EXECUTING TRADE: {setup['side'].upper()} {setup['symbol']} | Strategy: {active_config.NAME}")
+                        logger.info(f"🚨 [LIVE] EXECUTING TRADE: {setup['side'].upper()} {setup['symbol']} | Strategy: Holy Grail")
                         logger.info(f"📝 Setup: {setup['reason']}")
                         
                         futures_ticks = int(setup['risk_points'] / tick_sz)
                         target_ticks = int(futures_ticks * active_config.RR_RATIO)
                         futures_ticks = max(4, futures_ticks)
                             
-                        logger.info(f"Order -> Stop Loss: {futures_ticks} Ticks | Take Profit: {target_ticks} Ticks")
+                        logger.info(f"Live Order -> Stop Loss: {futures_ticks} Ticks | Take Profit: {target_ticks} Ticks")
                         
+                        # LIVE MODE
                         res = topstep.place_market_order(
                             symbol=setup['symbol'],
                             side=setup['side'],

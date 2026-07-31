@@ -35,7 +35,7 @@ def main():
         
     api = tradeapi.REST(api_key, secret_key, base_url="https://paper-api.alpaca.markets")
     
-    start_date = "2024-03-01"
+    start_date = "2022-06-01"
     end_date = "2024-05-31"
     
     # Map future to ETF proxy
@@ -44,13 +44,14 @@ def main():
         "MES": "SPY",
         "GC": "GLD",
         "CL": "USO",
-        "YM": "DIA"
+        "YM": "DIA",
+        "MYM": "DIA"
     }
     
     for future, etf in assets.items():
         bars = fetch_data(api, etf, start_date, end_date)
         if not bars.empty:
-            output_file = f"historical_{future.lower()}_90d.csv"
+            output_file = f"historical_{future.lower()}_2yr.csv"
             bars.to_csv(output_file, index=False)
             logging.info(f"✅ Saved {future} proxy ({etf}) to {output_file}")
 

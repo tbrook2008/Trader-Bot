@@ -2,6 +2,11 @@ import pandas as pd
 import itertools
 from datetime import datetime
 import json
+import multiprocessing
+try:
+    multiprocessing.set_start_method('fork', force=True)
+except Exception:
+    pass
 from multiprocessing import Pool, cpu_count
 import sys
 import os
@@ -41,16 +46,49 @@ def build_resampled_dict(df, timeframes):
     return resampled_data
 
 def process_config(args):
-    config, bars_list, point_value = args
-    return simulate_backtest_fast(bars_list, config, point_value)
+    global data_dict_is, data_dict_oos
+    config, point_value = args
+    
+    # 1. Run In-Sample
+    is_bars = data_dict_is[config['TIMEFRAME']]
+    is_res = simulate_backtest_fast(is_bars, config, point_value)
+    
+    # In-Sample Filters
+    if is_res['win_rate'] < 45.0 or is_res['net_pnl'] <= 1000 or is_res['max_dd'] >= 6 or is_res['trades'] < 20:
+        return None
+        
+    # 2. Run Out-of-Sample
+    oos_bars = data_dict_oos[config['TIMEFRAME']]
+    oos_res = simulate_backtest_fast(oos_bars, config, point_value)
+    
+    # Out-of-Sample Filters
+    if oos_res['win_rate'] < 40.0 or oos_res['net_pnl'] <= 0 or oos_res['max_dd'] >= 8:
+        return None
+        
+    # Combine results for Holy Grail scoring
+    total_pnl = is_res['net_pnl'] + oos_res['net_pnl']
+    avg_win_rate = (is_res['win_rate'] + oos_res['win_rate']) / 2
+    total_trades = is_res['trades'] + oos_res['trades']
+    max_dd = max(is_res['max_dd'], oos_res['max_dd'])
+    
+    return {
+        "config": config,
+        "is_pnl": is_res['net_pnl'],
+        "oos_pnl": oos_res['net_pnl'],
+        "total_pnl": total_pnl,
+        "avg_win_rate": avg_win_rate,
+        "total_trades": total_trades,
+        "max_dd": max_dd
+    }
 
 def main(asset, point_value, scale_factor=1.0):
-    filepath = f"historical_{asset.lower()}_90d.csv"
+    global data_dict_is, data_dict_oos
+    filepath = f"historical_{asset.lower()}_2yr.csv"
     if not os.path.exists(filepath):
         print(f"❌ Cannot find data file {filepath}")
         return
         
-    print(f"🚀 Loading 90-day dataset for {asset}...")
+    print(f"🚀 Loading 2-Year Dataset for {asset}...")
     df = pd.read_csv(filepath)
     df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True).dt.tz_convert('US/Eastern')
         
@@ -62,48 +100,48 @@ def main(asset, point_value, scale_factor=1.0):
         df['low'] *= scale_factor
         df['close'] *= scale_factor
         
-    print(f"⏳ Resampling Data and Calculating ATR for {asset}...")
-    data_dict = build_resampled_dict(df, PARAM_GRID['TIMEFRAME'])
+    print(f"⏳ Splitting Data into In-Sample (IS) and Out-of-Sample (OOS)...")
+    split_idx = int(len(df) * 0.6) # 60% IS, 40% OOS
+    df_is = df.iloc[:split_idx]
+    df_oos = df.iloc[split_idx:]
+    
+    print(f"⏳ Resampling Data and Calculating ATR for {asset} IS and OOS...")
+    data_dict_is = build_resampled_dict(df_is, PARAM_GRID['TIMEFRAME'])
+    data_dict_oos = build_resampled_dict(df_oos, PARAM_GRID['TIMEFRAME'])
     
     keys, values = zip(*PARAM_GRID.items())
     combinations = [dict(zip(keys, v)) for v in itertools.product(*values)]
     
-    print(f"🔬 Starting Grid Search over {len(combinations)} configurations...")
+    print(f"🔬 Starting Holy Grail Grid Search over {len(combinations)} configurations...")
     
-    tasks = [(config, data_dict[config['TIMEFRAME']], point_value) for config in combinations]
+    tasks = [(config, point_value) for config in combinations]
     results = []
     
     cores = cpu_count()
     with Pool(processes=cores) as pool:
         for i, res in enumerate(pool.imap_unordered(process_config, tasks)):
-            results.append(res)
+            if res is not None:
+                results.append(res)
             if (i + 1) % 1000 == 0:
-                print(f"Progress: {i + 1}/{len(combinations)} configs evaluated.")
+                print(f"Progress: {i + 1}/{len(combinations)} configs evaluated. Holy Grails found: {len(results)}")
                 
-    print("\n✅ Simulation Complete. Applying holy grail filters...")
+    print("\n✅ Simulation Complete.")
     
-    viable = []
-    for r in results:
-        # RULES FOR SURVIVAL:
-        if r['win_rate'] < 40.0: continue
-        if r['net_pnl'] <= 500: continue
-        if r['max_dd'] >= 6: continue
-        if r['trades'] < 15: continue
-        viable.append(r)
-        
-    viable.sort(key=lambda x: x['net_pnl'], reverse=True)
+    results.sort(key=lambda x: x['total_pnl'], reverse=True)
     
     output_file = f'best_params_{asset.lower()}.json'
     with open(output_file, 'w') as f:
-        json.dump(viable[:20], f, indent=4)
+        # Convert it back to the format the bot expects for best_params (just the config dicts)
+        final_configs = [r['config'] for r in results[:20]]
+        json.dump(final_configs, f, indent=4)
         
-    print(f"\n💾 Saved Top {len(viable[:20])} configurations to {output_file}")
-    if not viable:
-        print("❌ CRITICAL: No configurations survived.")
+    print(f"\n💾 Saved Top {len(results[:20])} Holy Grail configurations to {output_file}")
+    if not results:
+        print("❌ CRITICAL: No configurations survived both In-Sample and Out-of-Sample testing.")
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python3 optimize_cross_val.py <GC|CL|YM>")
+        print("Usage: python3 optimize_cross_val.py <GC|CL|YM|MNQ|MES|MYM>")
         sys.exit(1)
         
     asset = sys.argv[1].upper()
@@ -112,7 +150,8 @@ if __name__ == "__main__":
         "CL": {"point_value": 1000.0, "scale_factor": 1.0},
         "YM": {"point_value": 5.0, "scale_factor": 100.0},
         "MNQ": {"point_value": 2.0, "scale_factor": 40.0},
-        "MES": {"point_value": 5.0, "scale_factor": 10.0}
+        "MES": {"point_value": 5.0, "scale_factor": 10.0},
+        "MYM": {"point_value": 0.5, "scale_factor": 100.0}
     }
     
     if asset not in configs:

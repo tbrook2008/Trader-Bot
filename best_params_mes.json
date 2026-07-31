@@ -1,482 +1,167 @@
 [
     {
-        "params": {
-            "TIMEFRAME": 10,
-            "RR_RATIO": 3.0,
-            "LOOKBACK_BARS": 20,
-            "MIN_RISK_ATR_MULTIPLIER": 0.5,
-            "MAX_RISK_ATR_MULTIPLIER": 6.0,
-            "MIN_FVG_ATR_MULTIPLIER": 0.1,
-            "TIME_WINDOW": {
-                "name": "Full NY Session",
-                "start_h": 9,
-                "start_m": 30,
-                "end_h": 16,
-                "end_m": 0
-            }
-        },
-        "trades": 49,
-        "wins": 24,
-        "losses": 25,
-        "win_rate": 48.97959183673469,
-        "net_points": 666.3499999999976,
-        "net_pnl": 3331.749999999988,
-        "max_dd": 4
+        "TIMEFRAME": 2,
+        "RR_RATIO": 1.5,
+        "LOOKBACK_BARS": 10,
+        "MIN_RISK_ATR_MULTIPLIER": 0.5,
+        "MAX_RISK_ATR_MULTIPLIER": 6.0,
+        "MIN_FVG_ATR_MULTIPLIER": 1.0,
+        "TIME_WINDOW": {
+            "name": "Afternoon Sniper",
+            "start_h": 13,
+            "start_m": 0,
+            "end_h": 15,
+            "end_m": 30
+        }
     },
     {
-        "params": {
-            "TIMEFRAME": 10,
-            "RR_RATIO": 3.0,
-            "LOOKBACK_BARS": 30,
-            "MIN_RISK_ATR_MULTIPLIER": 0.5,
-            "MAX_RISK_ATR_MULTIPLIER": 6.0,
-            "MIN_FVG_ATR_MULTIPLIER": 0.1,
-            "TIME_WINDOW": {
-                "name": "Full NY Session",
-                "start_h": 9,
-                "start_m": 30,
-                "end_h": 16,
-                "end_m": 0
-            }
-        },
-        "trades": 54,
-        "wins": 24,
-        "losses": 30,
-        "win_rate": 44.44444444444444,
-        "net_points": 598.6500000000015,
-        "net_pnl": 2993.2500000000073,
-        "max_dd": 5
+        "TIMEFRAME": 15,
+        "RR_RATIO": 1.5,
+        "LOOKBACK_BARS": 15,
+        "MIN_RISK_ATR_MULTIPLIER": 0.5,
+        "MAX_RISK_ATR_MULTIPLIER": 3.0,
+        "MIN_FVG_ATR_MULTIPLIER": 1.0,
+        "TIME_WINDOW": {
+            "name": "Afternoon Sniper",
+            "start_h": 13,
+            "start_m": 0,
+            "end_h": 15,
+            "end_m": 30
+        }
     },
     {
-        "params": {
-            "TIMEFRAME": 10,
-            "RR_RATIO": 2.0,
-            "LOOKBACK_BARS": 20,
-            "MIN_RISK_ATR_MULTIPLIER": 0.5,
-            "MAX_RISK_ATR_MULTIPLIER": 6.0,
-            "MIN_FVG_ATR_MULTIPLIER": 0.25,
-            "TIME_WINDOW": {
-                "name": "Morning Sniper",
-                "start_h": 8,
-                "start_m": 30,
-                "end_h": 11,
-                "end_m": 30
-            }
-        },
-        "trades": 61,
-        "wins": 28,
-        "losses": 33,
-        "win_rate": 45.90163934426229,
-        "net_points": 591.6880000000019,
-        "net_pnl": 2958.4400000000096,
-        "max_dd": 5
+        "TIMEFRAME": 2,
+        "RR_RATIO": 1.0,
+        "LOOKBACK_BARS": 10,
+        "MIN_RISK_ATR_MULTIPLIER": 0.5,
+        "MAX_RISK_ATR_MULTIPLIER": 4.0,
+        "MIN_FVG_ATR_MULTIPLIER": 1.0,
+        "TIME_WINDOW": {
+            "name": "Afternoon Sniper",
+            "start_h": 13,
+            "start_m": 0,
+            "end_h": 15,
+            "end_m": 30
+        }
     },
     {
-        "params": {
-            "TIMEFRAME": 15,
-            "RR_RATIO": 2.0,
-            "LOOKBACK_BARS": 15,
-            "MIN_RISK_ATR_MULTIPLIER": 0.5,
-            "MAX_RISK_ATR_MULTIPLIER": 3.0,
-            "MIN_FVG_ATR_MULTIPLIER": 0.1,
-            "TIME_WINDOW": {
-                "name": "Full NY Session",
-                "start_h": 9,
-                "start_m": 30,
-                "end_h": 16,
-                "end_m": 0
-            }
-        },
-        "trades": 97,
-        "wins": 43,
-        "losses": 54,
-        "win_rate": 44.329896907216494,
-        "net_points": 591.2589999999982,
-        "net_pnl": 2956.294999999991,
-        "max_dd": 4
+        "TIMEFRAME": 2,
+        "RR_RATIO": 1.5,
+        "LOOKBACK_BARS": 10,
+        "MIN_RISK_ATR_MULTIPLIER": 0.5,
+        "MAX_RISK_ATR_MULTIPLIER": 5.0,
+        "MIN_FVG_ATR_MULTIPLIER": 1.0,
+        "TIME_WINDOW": {
+            "name": "Afternoon Sniper",
+            "start_h": 13,
+            "start_m": 0,
+            "end_h": 15,
+            "end_m": 30
+        }
     },
     {
-        "params": {
-            "TIMEFRAME": 10,
-            "RR_RATIO": 2.0,
-            "LOOKBACK_BARS": 15,
-            "MIN_RISK_ATR_MULTIPLIER": 0.5,
-            "MAX_RISK_ATR_MULTIPLIER": 6.0,
-            "MIN_FVG_ATR_MULTIPLIER": 0.25,
-            "TIME_WINDOW": {
-                "name": "Morning Sniper",
-                "start_h": 8,
-                "start_m": 30,
-                "end_h": 11,
-                "end_m": 30
-            }
-        },
-        "trades": 58,
-        "wins": 27,
-        "losses": 31,
-        "win_rate": 46.55172413793103,
-        "net_points": 510.2059999999974,
-        "net_pnl": 2551.029999999987,
-        "max_dd": 4
+        "TIMEFRAME": 15,
+        "RR_RATIO": 1.0,
+        "LOOKBACK_BARS": 15,
+        "MIN_RISK_ATR_MULTIPLIER": 0.5,
+        "MAX_RISK_ATR_MULTIPLIER": 3.0,
+        "MIN_FVG_ATR_MULTIPLIER": 1.0,
+        "TIME_WINDOW": {
+            "name": "Afternoon Sniper",
+            "start_h": 13,
+            "start_m": 0,
+            "end_h": 15,
+            "end_m": 30
+        }
     },
     {
-        "params": {
-            "TIMEFRAME": 15,
-            "RR_RATIO": 2.0,
-            "LOOKBACK_BARS": 15,
-            "MIN_RISK_ATR_MULTIPLIER": 0.5,
-            "MAX_RISK_ATR_MULTIPLIER": 3.0,
-            "MIN_FVG_ATR_MULTIPLIER": 1.0,
-            "TIME_WINDOW": {
-                "name": "Full NY Session",
-                "start_h": 9,
-                "start_m": 30,
-                "end_h": 16,
-                "end_m": 0
-            }
-        },
-        "trades": 23,
-        "wins": 15,
-        "losses": 8,
-        "win_rate": 65.21739130434783,
-        "net_points": 468.62000000000535,
-        "net_pnl": 2343.1000000000267,
-        "max_dd": 3
+        "TIMEFRAME": 15,
+        "RR_RATIO": 1.5,
+        "LOOKBACK_BARS": 30,
+        "MIN_RISK_ATR_MULTIPLIER": 0.5,
+        "MAX_RISK_ATR_MULTIPLIER": 3.0,
+        "MIN_FVG_ATR_MULTIPLIER": 1.0,
+        "TIME_WINDOW": {
+            "name": "Afternoon Sniper",
+            "start_h": 13,
+            "start_m": 0,
+            "end_h": 15,
+            "end_m": 30
+        }
     },
     {
-        "params": {
-            "TIMEFRAME": 10,
-            "RR_RATIO": 2.0,
-            "LOOKBACK_BARS": 10,
-            "MIN_RISK_ATR_MULTIPLIER": 0.5,
-            "MAX_RISK_ATR_MULTIPLIER": 6.0,
-            "MIN_FVG_ATR_MULTIPLIER": 0.25,
-            "TIME_WINDOW": {
-                "name": "Morning Sniper",
-                "start_h": 8,
-                "start_m": 30,
-                "end_h": 11,
-                "end_m": 30
-            }
-        },
-        "trades": 55,
-        "wins": 22,
-        "losses": 33,
-        "win_rate": 40.0,
-        "net_points": 449.60999999999694,
-        "net_pnl": 2248.0499999999847,
-        "max_dd": 4
+        "TIMEFRAME": 15,
+        "RR_RATIO": 1.0,
+        "LOOKBACK_BARS": 10,
+        "MIN_RISK_ATR_MULTIPLIER": 0.5,
+        "MAX_RISK_ATR_MULTIPLIER": 3.0,
+        "MIN_FVG_ATR_MULTIPLIER": 1.0,
+        "TIME_WINDOW": {
+            "name": "Full NY Session",
+            "start_h": 9,
+            "start_m": 30,
+            "end_h": 16,
+            "end_m": 0
+        }
     },
     {
-        "params": {
-            "TIMEFRAME": 10,
-            "RR_RATIO": 3.0,
-            "LOOKBACK_BARS": 20,
-            "MIN_RISK_ATR_MULTIPLIER": 0.5,
-            "MAX_RISK_ATR_MULTIPLIER": 6.0,
-            "MIN_FVG_ATR_MULTIPLIER": 0.25,
-            "TIME_WINDOW": {
-                "name": "Morning Sniper",
-                "start_h": 8,
-                "start_m": 30,
-                "end_h": 11,
-                "end_m": 30
-            }
-        },
-        "trades": 38,
-        "wins": 16,
-        "losses": 22,
-        "win_rate": 42.10526315789473,
-        "net_points": 447.6120000000037,
-        "net_pnl": 2238.0600000000186,
-        "max_dd": 5
+        "TIMEFRAME": 15,
+        "RR_RATIO": 1.0,
+        "LOOKBACK_BARS": 10,
+        "MIN_RISK_ATR_MULTIPLIER": 0.5,
+        "MAX_RISK_ATR_MULTIPLIER": 6.0,
+        "MIN_FVG_ATR_MULTIPLIER": 1.0,
+        "TIME_WINDOW": {
+            "name": "Afternoon Sniper",
+            "start_h": 13,
+            "start_m": 0,
+            "end_h": 15,
+            "end_m": 30
+        }
     },
     {
-        "params": {
-            "TIMEFRAME": 15,
-            "RR_RATIO": 2.0,
-            "LOOKBACK_BARS": 15,
-            "MIN_RISK_ATR_MULTIPLIER": 0.5,
-            "MAX_RISK_ATR_MULTIPLIER": 4.0,
-            "MIN_FVG_ATR_MULTIPLIER": 0.1,
-            "TIME_WINDOW": {
-                "name": "Full NY Session",
-                "start_h": 9,
-                "start_m": 30,
-                "end_h": 16,
-                "end_m": 0
-            }
-        },
-        "trades": 86,
-        "wins": 38,
-        "losses": 48,
-        "win_rate": 44.18604651162791,
-        "net_points": 445.00499999999283,
-        "net_pnl": 2225.024999999964,
-        "max_dd": 5
+        "TIMEFRAME": 15,
+        "RR_RATIO": 1.0,
+        "LOOKBACK_BARS": 10,
+        "MIN_RISK_ATR_MULTIPLIER": 0.5,
+        "MAX_RISK_ATR_MULTIPLIER": 3.0,
+        "MIN_FVG_ATR_MULTIPLIER": 1.0,
+        "TIME_WINDOW": {
+            "name": "Afternoon Sniper",
+            "start_h": 13,
+            "start_m": 0,
+            "end_h": 15,
+            "end_m": 30
+        }
     },
     {
-        "params": {
-            "TIMEFRAME": 10,
-            "RR_RATIO": 3.0,
-            "LOOKBACK_BARS": 30,
-            "MIN_RISK_ATR_MULTIPLIER": 0.5,
-            "MAX_RISK_ATR_MULTIPLIER": 6.0,
-            "MIN_FVG_ATR_MULTIPLIER": 0.25,
-            "TIME_WINDOW": {
-                "name": "Full NY Session",
-                "start_h": 9,
-                "start_m": 30,
-                "end_h": 16,
-                "end_m": 0
-            }
-        },
-        "trades": 44,
-        "wins": 19,
-        "losses": 25,
-        "win_rate": 43.18181818181818,
-        "net_points": 444.45500000001266,
-        "net_pnl": 2222.2750000000633,
-        "max_dd": 4
+        "TIMEFRAME": 15,
+        "RR_RATIO": 1.0,
+        "LOOKBACK_BARS": 30,
+        "MIN_RISK_ATR_MULTIPLIER": 0.5,
+        "MAX_RISK_ATR_MULTIPLIER": 3.0,
+        "MIN_FVG_ATR_MULTIPLIER": 1.0,
+        "TIME_WINDOW": {
+            "name": "Afternoon Sniper",
+            "start_h": 13,
+            "start_m": 0,
+            "end_h": 15,
+            "end_m": 30
+        }
     },
     {
-        "params": {
-            "TIMEFRAME": 15,
-            "RR_RATIO": 2.0,
-            "LOOKBACK_BARS": 15,
-            "MIN_RISK_ATR_MULTIPLIER": 0.5,
-            "MAX_RISK_ATR_MULTIPLIER": 3.0,
-            "MIN_FVG_ATR_MULTIPLIER": 0.1,
-            "TIME_WINDOW": {
-                "name": "Morning Sniper",
-                "start_h": 8,
-                "start_m": 30,
-                "end_h": 11,
-                "end_m": 30
-            }
-        },
-        "trades": 60,
-        "wins": 28,
-        "losses": 32,
-        "win_rate": 46.666666666666664,
-        "net_points": 441.1500000000042,
-        "net_pnl": 2205.750000000021,
-        "max_dd": 5
-    },
-    {
-        "params": {
-            "TIMEFRAME": 10,
-            "RR_RATIO": 1.5,
-            "LOOKBACK_BARS": 20,
-            "MIN_RISK_ATR_MULTIPLIER": 0.5,
-            "MAX_RISK_ATR_MULTIPLIER": 6.0,
-            "MIN_FVG_ATR_MULTIPLIER": 0.25,
-            "TIME_WINDOW": {
-                "name": "Morning Sniper",
-                "start_h": 8,
-                "start_m": 30,
-                "end_h": 11,
-                "end_m": 30
-            }
-        },
-        "trades": 87,
-        "wins": 42,
-        "losses": 45,
-        "win_rate": 48.275862068965516,
-        "net_points": 435.3979999999892,
-        "net_pnl": 2176.989999999946,
-        "max_dd": 5
-    },
-    {
-        "params": {
-            "TIMEFRAME": 15,
-            "RR_RATIO": 2.0,
-            "LOOKBACK_BARS": 20,
-            "MIN_RISK_ATR_MULTIPLIER": 0.5,
-            "MAX_RISK_ATR_MULTIPLIER": 3.0,
-            "MIN_FVG_ATR_MULTIPLIER": 1.0,
-            "TIME_WINDOW": {
-                "name": "Full NY Session",
-                "start_h": 9,
-                "start_m": 30,
-                "end_h": 16,
-                "end_m": 0
-            }
-        },
-        "trades": 26,
-        "wins": 16,
-        "losses": 10,
-        "win_rate": 61.53846153846154,
-        "net_points": 433.3960000000052,
-        "net_pnl": 2166.980000000026,
-        "max_dd": 4
-    },
-    {
-        "params": {
-            "TIMEFRAME": 10,
-            "RR_RATIO": 2.0,
-            "LOOKBACK_BARS": 20,
-            "MIN_RISK_ATR_MULTIPLIER": 0.5,
-            "MAX_RISK_ATR_MULTIPLIER": 6.0,
-            "MIN_FVG_ATR_MULTIPLIER": 0.25,
-            "TIME_WINDOW": {
-                "name": "Full NY Session",
-                "start_h": 9,
-                "start_m": 30,
-                "end_h": 16,
-                "end_m": 0
-            }
-        },
-        "trades": 73,
-        "wins": 30,
-        "losses": 43,
-        "win_rate": 41.0958904109589,
-        "net_points": 425.53000000000156,
-        "net_pnl": 2127.650000000008,
-        "max_dd": 5
-    },
-    {
-        "params": {
-            "TIMEFRAME": 10,
-            "RR_RATIO": 2.0,
-            "LOOKBACK_BARS": 20,
-            "MIN_RISK_ATR_MULTIPLIER": 0.5,
-            "MAX_RISK_ATR_MULTIPLIER": 6.0,
-            "MIN_FVG_ATR_MULTIPLIER": 0.1,
-            "TIME_WINDOW": {
-                "name": "Morning Sniper",
-                "start_h": 8,
-                "start_m": 30,
-                "end_h": 11,
-                "end_m": 30
-            }
-        },
-        "trades": 74,
-        "wins": 30,
-        "losses": 44,
-        "win_rate": 40.54054054054054,
-        "net_points": 422.0350000000035,
-        "net_pnl": 2110.1750000000175,
-        "max_dd": 5
-    },
-    {
-        "params": {
-            "TIMEFRAME": 10,
-            "RR_RATIO": 2.0,
-            "LOOKBACK_BARS": 30,
-            "MIN_RISK_ATR_MULTIPLIER": 0.5,
-            "MAX_RISK_ATR_MULTIPLIER": 6.0,
-            "MIN_FVG_ATR_MULTIPLIER": 0.25,
-            "TIME_WINDOW": {
-                "name": "Full NY Session",
-                "start_h": 9,
-                "start_m": 30,
-                "end_h": 16,
-                "end_m": 0
-            }
-        },
-        "trades": 71,
-        "wins": 30,
-        "losses": 41,
-        "win_rate": 42.25352112676056,
-        "net_points": 402.8850000000002,
-        "net_pnl": 2014.425000000001,
-        "max_dd": 5
-    },
-    {
-        "params": {
-            "TIMEFRAME": 10,
-            "RR_RATIO": 3.0,
-            "LOOKBACK_BARS": 10,
-            "MIN_RISK_ATR_MULTIPLIER": 0.5,
-            "MAX_RISK_ATR_MULTIPLIER": 3.0,
-            "MIN_FVG_ATR_MULTIPLIER": 1.0,
-            "TIME_WINDOW": {
-                "name": "Full NY Session",
-                "start_h": 9,
-                "start_m": 30,
-                "end_h": 16,
-                "end_m": 0
-            }
-        },
-        "trades": 19,
-        "wins": 9,
-        "losses": 10,
-        "win_rate": 47.368421052631575,
-        "net_points": 395.7539999999981,
-        "net_pnl": 1978.7699999999904,
-        "max_dd": 5
-    },
-    {
-        "params": {
-            "TIMEFRAME": 15,
-            "RR_RATIO": 1.5,
-            "LOOKBACK_BARS": 15,
-            "MIN_RISK_ATR_MULTIPLIER": 0.5,
-            "MAX_RISK_ATR_MULTIPLIER": 3.0,
-            "MIN_FVG_ATR_MULTIPLIER": 0.1,
-            "TIME_WINDOW": {
-                "name": "Full NY Session",
-                "start_h": 9,
-                "start_m": 30,
-                "end_h": 16,
-                "end_m": 0
-            }
-        },
-        "trades": 136,
-        "wins": 65,
-        "losses": 71,
-        "win_rate": 47.794117647058826,
-        "net_points": 394.98949999999604,
-        "net_pnl": 1974.9474999999802,
-        "max_dd": 4
-    },
-    {
-        "params": {
-            "TIMEFRAME": 15,
-            "RR_RATIO": 2.0,
-            "LOOKBACK_BARS": 30,
-            "MIN_RISK_ATR_MULTIPLIER": 0.5,
-            "MAX_RISK_ATR_MULTIPLIER": 3.0,
-            "MIN_FVG_ATR_MULTIPLIER": 1.0,
-            "TIME_WINDOW": {
-                "name": "Full NY Session",
-                "start_h": 9,
-                "start_m": 30,
-                "end_h": 16,
-                "end_m": 0
-            }
-        },
-        "trades": 31,
-        "wins": 16,
-        "losses": 15,
-        "win_rate": 51.61290322580645,
-        "net_points": 379.412000000003,
-        "net_pnl": 1897.060000000015,
-        "max_dd": 5
-    },
-    {
-        "params": {
-            "TIMEFRAME": 10,
-            "RR_RATIO": 1.5,
-            "LOOKBACK_BARS": 15,
-            "MIN_RISK_ATR_MULTIPLIER": 0.5,
-            "MAX_RISK_ATR_MULTIPLIER": 6.0,
-            "MIN_FVG_ATR_MULTIPLIER": 0.25,
-            "TIME_WINDOW": {
-                "name": "Morning Sniper",
-                "start_h": 8,
-                "start_m": 30,
-                "end_h": 11,
-                "end_m": 30
-            }
-        },
-        "trades": 70,
-        "wins": 35,
-        "losses": 35,
-        "win_rate": 50.0,
-        "net_points": 375.7529999999924,
-        "net_pnl": 1878.7649999999621,
-        "max_dd": 4
+        "TIMEFRAME": 15,
+        "RR_RATIO": 1.0,
+        "LOOKBACK_BARS": 30,
+        "MIN_RISK_ATR_MULTIPLIER": 0.5,
+        "MAX_RISK_ATR_MULTIPLIER": 3.0,
+        "MIN_FVG_ATR_MULTIPLIER": 0.5,
+        "TIME_WINDOW": {
+            "name": "Afternoon Sniper",
+            "start_h": 13,
+            "start_m": 0,
+            "end_h": 15,
+            "end_m": 30
+        }
     }
 ]

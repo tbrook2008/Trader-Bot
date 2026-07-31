@@ -1,0 +1,47 @@
+[
+    {
+        "TIMEFRAME": 15,
+        "RR_RATIO": 1.5,
+        "LOOKBACK_BARS": 10,
+        "MIN_RISK_ATR_MULTIPLIER": 0.5,
+        "MAX_RISK_ATR_MULTIPLIER": 3.0,
+        "MIN_FVG_ATR_MULTIPLIER": 1.0,
+        "TIME_WINDOW": {
+            "name": "Afternoon Sniper",
+            "start_h": 13,
+            "start_m": 0,
+            "end_h": 15,
+            "end_m": 30
+        }
+    },
+    {
+        "TIMEFRAME": 15,
+        "RR_RATIO": 1.0,
+        "LOOKBACK_BARS": 10,
+        "MIN_RISK_ATR_MULTIPLIER": 0.5,
+        "MAX_RISK_ATR_MULTIPLIER": 3.0,
+        "MIN_FVG_ATR_MULTIPLIER": 1.0,
+        "TIME_WINDOW": {
+            "name": "Afternoon Sniper",
+            "start_h": 13,
+            "start_m": 0,
+            "end_h": 15,
+            "end_m": 30
+        }
+    },
+    {
+        "TIMEFRAME": 15,
+        "RR_RATIO": 1.0,
+        "LOOKBACK_BARS": 15,
+        "MIN_RISK_ATR_MULTIPLIER": 0.5,
+        "MAX_RISK_ATR_MULTIPLIER": 4.0,
+        "MIN_FVG_ATR_MULTIPLIER": 1.0,
+        "TIME_WINDOW": {
+            "name": "Afternoon Sniper",
+            "start_h": 13,
+            "start_m": 0,
+            "end_h": 15,
+            "end_m": 30
+        }
+    }
+]
