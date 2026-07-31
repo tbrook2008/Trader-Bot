@@ -47,6 +47,9 @@ consecutive_losses = 0
 in_position = {sym: False for sym in SYMBOLS}
 balance_before_trade = {sym: None for sym in SYMBOLS}
 
+_bars_cache = {}        # {timeframe: {symbol: [bars]}}
+_bars_cache_ts = {}     # {timeframe: timestamp}
+
 def check_rejection(bars_since_fvg, zone_low, zone_high, direction):
     if bars_since_fvg.empty:
         return False
@@ -143,8 +146,7 @@ def get_eastern_time():
 def main():
     global consecutive_losses, in_position, balance_before_trade
     
-    logger.info("🦅 IvanTrades Automated Execution Bot Started (Multi-Asset V2 Sandbox)")
-    logger.info("⚠️ V2 OFFLINE MODE: Trades will be logged but NOT submitted to Topstep.")
+    logger.info("🦅 IvanTrades Automated Execution Bot Started (Multi-Asset V2)")
     
     if not topstep.authenticate():
         logger.error("Could not authenticate Topstep. Check .env keys.")
@@ -239,8 +241,15 @@ def main():
                 continue
                 
             if consecutive_losses >= BaseConfig.MAX_CONSECUTIVE_LOSSES:
-                logger.critical("🛑 MAXIMUM DRAWDOWN LIMIT HIT. Shutting down bot.")
-                break
+                logger.critical("🛑 MAXIMUM DRAWDOWN LIMIT HIT. Pausing bot until next trading day.")
+                while True:
+                    time.sleep(300)
+                    et_check = get_eastern_time()
+                    if et_check.date() != current_date:
+                        consecutive_losses = 0
+                        logger.info("🌅 New trading day detected. Resuming trading.")
+                        break
+                continue
                 
             # 2. Fetch Market Data dynamically based on configured timeframes
             tf_symbols = {}
@@ -251,9 +260,16 @@ def main():
                 tf_symbols[tf].append(sym)
                 
             bars_data = {}
+            current_ts = time.time()
             for tf, syms in tf_symbols.items():
-                # Get enough bars to cover the longest lookback plus buffer for ATR
-                bars_data[tf] = topstep.get_latest_bars(syms, count=60, unit_number=tf)
+                if tf in _bars_cache_ts and current_ts - _bars_cache_ts[tf] < 30:
+                    bars_data[tf] = _bars_cache[tf]
+                else:
+                    # Get enough bars to cover the longest lookback plus buffer for ATR
+                    fetched = topstep.get_latest_bars(syms, count=60, unit_number=tf)
+                    _bars_cache[tf] = fetched
+                    _bars_cache_ts[tf] = current_ts
+                    bars_data[tf] = fetched
             
             for symbol in SYMBOLS:
                 if in_position[symbol]:
@@ -309,31 +325,43 @@ def main():
                             continue
                             
                         logger.info("=" * 60)
-                        logger.info(f"🚨 [OFFLINE V2] THEORETICAL TRADE: {setup['side'].upper()} {setup['symbol']} | Strategy: {active_config.NAME}")
+                        logger.info(f"🚨 EXECUTING TRADE: {setup['side'].upper()} {setup['symbol']} | Strategy: {active_config.NAME}")
                         logger.info(f"📝 Setup: {setup['reason']}")
                         
                         futures_ticks = int(setup['risk_points'] / tick_sz)
                         target_ticks = int(futures_ticks * active_config.RR_RATIO)
                         futures_ticks = max(4, futures_ticks)
                             
-                        logger.info(f"Theoretical Order -> Stop Loss: {futures_ticks} Ticks | Take Profit: {target_ticks} Ticks")
+                        logger.info(f"Order -> Stop Loss: {futures_ticks} Ticks | Take Profit: {target_ticks} Ticks")
                         
-                        # OFFLINE MODE: DO NOT CALL PLACE_MARKET_ORDER
-                        # res = topstep.place_market_order(...)
-                        # if res:
-                        #     in_position[setup['symbol']] = True
-                        #     balance_before_trade[setup['symbol']] = balance
+                        res = topstep.place_market_order(
+                            symbol=setup['symbol'],
+                            side=setup['side'],
+                            quantity=active_config.CONTRACT_QTY,
+                            tp_ticks=target_ticks,
+                            sl_ticks=futures_ticks
+                        )
+                        if res:
+                            in_position[setup['symbol']] = True
+                            balance_before_trade[setup['symbol']] = balance
+                            logger.info(f"💰 Pre-trade balance snapshot: ${balance:.2f}")
                         
                         last_signal = signal_hash
                         
-            time.sleep(10)
+            any_in_pos = any(in_position[s] for s in SYMBOLS)
+            if any_in_pos:
+                time.sleep(3)
+            elif 9 <= et_now.hour < 16:
+                time.sleep(10)  # Active session
+            else:
+                time.sleep(30)  # Off-hours
             
         except Exception as e:
             logger.error(f"Error in main loop: {e}")
             time.sleep(10)
 
 def current_time_bucket():
-    return datetime.now().strftime("%H:%M")
+    return get_eastern_time().strftime("%H:%M")
 
 if __name__ == "__main__":
     main()
