@@ -45,8 +45,8 @@ class BotConfig(BaseConfig):
 HOLY_GRAIL_CONFIGS = {
     "MNQ": BotConfig(
         "MNQ NY Afternoon",
-        TIMEFRAME=30,
-        RR_RATIO=2.0,
+        TIMEFRAME=15,
+        RR_RATIO=1.0,
         LOOKBACK_BARS=20,
         MIN_RISK_ATR_MULTIPLIER=0.5,
         MAX_RISK_ATR_MULTIPLIER=5.0,
@@ -431,10 +431,11 @@ def main():
                 if tf not in tf_symbols: tf_symbols[tf] = []
                 tf_symbols[tf].append(symbol)
                 
-            # Always ensure we fetch 30m and 1440m (1D) for HTF and PDH/PDL
+            # Always ensure we fetch 30m, 240m (4H) and 1440m (1D) for HTF and PDH/PDL
             all_syms_to_fetch = [s for syms in tf_symbols.values() for s in syms]
             if all_syms_to_fetch:
                 tf_symbols[30] = list(set(all_syms_to_fetch))
+                tf_symbols[240] = list(set(all_syms_to_fetch))
                 tf_symbols[1440] = list(set(all_syms_to_fetch))
                 
             bars_data = {}
@@ -490,9 +491,10 @@ def main():
                     tf = active_config.TIMEFRAME
                     if tf in bars_data and symbol in bars_data[tf] and bars_data[tf][symbol]:
                         df_tf = pd.DataFrame(bars_data[tf][symbol])
-                        df_30m = pd.DataFrame(bars_data.get(30, {}).get(symbol, []))
+                        htf = 240 if tf >= 30 else 30
+                        df_htf = pd.DataFrame(bars_data.get(htf, {}).get(symbol, []))
                         df_1d = pd.DataFrame(bars_data.get(1440, {}).get(symbol, []))
-                        setup = detect_ict_setup(df_tf, df_30m, df_1d, symbol, active_config)
+                        setup = detect_ict_setup(df_tf, df_htf, df_1d, symbol, active_config)
                         
                 # 5. Execution with Hard Floor Protection
                 if setup:

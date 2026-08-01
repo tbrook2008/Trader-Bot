@@ -40,7 +40,7 @@ def check_rejection_fast(bars_since_fvg, zone_low, zone_high, direction):
     else:
         return last_close > zone_high
 
-def detect_ict_setup_fast(bars_slice, config_params, symbol="ASSET"):
+def detect_ict_setup_fast(bars_slice, config_params, htf_bias=None):
     current_atr = bars_slice[-1]['atr']
     if pd.isna(current_atr) or current_atr == 0:
         return None
@@ -50,95 +50,97 @@ def detect_ict_setup_fast(bars_slice, config_params, symbol="ASSET"):
     max_risk = config_params['MAX_RISK_ATR_MULTIPLIER'] * current_atr
     current_price = bars_slice[-1]['close']
     
-    # Bearish
+    # Bearish - Only allow if htf_bias is not "buy" (i.e. "sell" or None)
     highest_idx = 0
     highest_val = -float('inf')
-    for i, b in enumerate(bars_slice):
-        if b['high'] > highest_val:
-            highest_val = b['high']
-            highest_idx = i
+    if htf_bias != "buy":
+        for i, b in enumerate(bars_slice):
+            if b['high'] > highest_val:
+                highest_val = b['high']
+                highest_idx = i
+                
+        if highest_idx < len(bars_slice) - 2:
+            sweep_high = highest_val
+            sweep_low_threshold = bars_slice[highest_idx]['low']
             
-    if highest_idx < len(bars_slice) - 2:
-        sweep_high = highest_val
-        sweep_low_threshold = bars_slice[highest_idx]['low']
-        
-        # MSS check
-        mss_idx = None
-        for j in range(highest_idx + 1, len(bars_slice)):
-            if bars_slice[j]['close'] < sweep_low_threshold:
-                c = bars_slice[j]
-                body = abs(c['close'] - c['open'])
-                crange = c['high'] - c['low']
-                if crange > 0 and (body / crange) >= 0.60:
-                    mss_idx = j
-                    break
-                    
-        if mss_idx is not None:
-            for i in range(highest_idx, len(bars_slice)-2):
-                c1_low = bars_slice[i]['low']
-                c3_high = bars_slice[i+2]['high']
-                fvg_gap = c1_low - c3_high
-                if fvg_gap >= min_fvg:
-                    zone_low, zone_high = c3_high, c1_low
-                    risk_points = sweep_high - zone_low
-                    if min_risk <= risk_points <= max_risk:
-                        # OTE Filter
-                        swing_low = min([b['low'] for b in bars_slice[highest_idx:i+3]])
-                        move_range = sweep_high - swing_low
-                        fib_618 = sweep_high - (move_range * 0.618)
-                        fib_790 = sweep_high - (move_range * 0.790)
+            # MSS check
+            mss_idx = None
+            for j in range(highest_idx + 1, len(bars_slice)):
+                if bars_slice[j]['close'] < sweep_low_threshold:
+                    c = bars_slice[j]
+                    body = abs(c['close'] - c['open'])
+                    crange = c['high'] - c['low']
+                    if crange > 0 and (body / crange) >= 0.60:
+                        mss_idx = j
+                        break
                         
-                        if fib_790 <= current_price <= fib_618:
-                            bars_since_fvg = bars_slice[i+2:]
-                            if check_rejection_fast(bars_since_fvg, zone_low, zone_high, "sell"):
-                                return {"side": "sell", "risk_points": risk_points}
+            if mss_idx is not None:
+                for i in range(highest_idx, len(bars_slice)-2):
+                    c1_low = bars_slice[i]['low']
+                    c3_high = bars_slice[i+2]['high']
+                    fvg_gap = c1_low - c3_high
+                    if fvg_gap >= min_fvg:
+                        zone_low, zone_high = c3_high, c1_low
+                        risk_points = sweep_high - zone_low
+                        if min_risk <= risk_points <= max_risk:
+                            # OTE Filter
+                            swing_low = min([b['low'] for b in bars_slice[highest_idx:i+3]])
+                            move_range = sweep_high - swing_low
+                            fib_618 = sweep_high - (move_range * 0.618)
+                            fib_790 = sweep_high - (move_range * 0.790)
                             
-    # Bullish
+                            if fib_790 <= current_price <= fib_618:
+                                bars_since_fvg = bars_slice[i+2:]
+                                if check_rejection_fast(bars_since_fvg, zone_low, zone_high, "sell"):
+                                    return {"side": "sell", "risk_points": risk_points}
+                                
+    # Bullish - Only allow if htf_bias is not "sell" (i.e. "buy" or None)
     lowest_idx = 0
     lowest_val = float('inf')
-    for i, b in enumerate(bars_slice):
-        if b['low'] < lowest_val:
-            lowest_val = b['low']
-            lowest_idx = i
+    if htf_bias != "sell":
+        for i, b in enumerate(bars_slice):
+            if b['low'] < lowest_val:
+                lowest_val = b['low']
+                lowest_idx = i
+                
+        if lowest_idx < len(bars_slice) - 2:
+            sweep_low = lowest_val
+            sweep_high_threshold = bars_slice[lowest_idx]['high']
             
-    if lowest_idx < len(bars_slice) - 2:
-        sweep_low = lowest_val
-        sweep_high_threshold = bars_slice[lowest_idx]['high']
-        
-        # MSS check
-        mss_idx = None
-        for j in range(lowest_idx + 1, len(bars_slice)):
-            if bars_slice[j]['close'] > sweep_high_threshold:
-                c = bars_slice[j]
-                body = abs(c['close'] - c['open'])
-                crange = c['high'] - c['low']
-                if crange > 0 and (body / crange) >= 0.60:
-                    mss_idx = j
-                    break
-                    
-        if mss_idx is not None:
-            for i in range(lowest_idx, len(bars_slice)-2):
-                c1_high = bars_slice[i]['high']
-                c3_low = bars_slice[i+2]['low']
-                fvg_gap = c3_low - c1_high
-                if fvg_gap >= min_fvg:
-                    zone_low, zone_high = c1_high, c3_low
-                    risk_points = zone_high - sweep_low
-                    if min_risk <= risk_points <= max_risk:
-                        # OTE Filter
-                        swing_high = max([b['high'] for b in bars_slice[lowest_idx:i+3]])
-                        move_range = swing_high - sweep_low
-                        fib_618 = sweep_low + (move_range * 0.618)
-                        fib_790 = sweep_low + (move_range * 0.790)
+            # MSS check
+            mss_idx = None
+            for j in range(lowest_idx + 1, len(bars_slice)):
+                if bars_slice[j]['close'] > sweep_high_threshold:
+                    c = bars_slice[j]
+                    body = abs(c['close'] - c['open'])
+                    crange = c['high'] - c['low']
+                    if crange > 0 and (body / crange) >= 0.60:
+                        mss_idx = j
+                        break
                         
-                        if fib_618 <= current_price <= fib_790:
-                            bars_since_fvg = bars_slice[i+2:]
-                            if check_rejection_fast(bars_since_fvg, zone_low, zone_high, "buy"):
-                                return {"side": "buy", "risk_points": risk_points}
+            if mss_idx is not None:
+                for i in range(lowest_idx, len(bars_slice)-2):
+                    c1_high = bars_slice[i]['high']
+                    c3_low = bars_slice[i+2]['low']
+                    fvg_gap = c3_low - c1_high
+                    if fvg_gap >= min_fvg:
+                        zone_low, zone_high = c1_high, c3_low
+                        risk_points = zone_high - sweep_low
+                        if min_risk <= risk_points <= max_risk:
+                            # OTE Filter
+                            swing_high = max([b['high'] for b in bars_slice[lowest_idx:i+3]])
+                            move_range = swing_high - sweep_low
+                            fib_618 = sweep_low + (move_range * 0.618)
+                            fib_790 = sweep_low + (move_range * 0.790)
                             
+                            if fib_618 <= current_price <= fib_790:
+                                bars_since_fvg = bars_slice[i+2:]
+                                if check_rejection_fast(bars_since_fvg, zone_low, zone_high, "buy"):
+                                    return {"side": "buy", "risk_points": risk_points}
+                                
     return None
 
-def simulate_backtest_fast(bars_list, config_params, point_value=1.0):
+def simulate_backtest_fast(bars_list, config_params, point_value=1.0, htf_bias_dict=None):
     lookback = config_params['LOOKBACK_BARS']
     rr_ratio = config_params['RR_RATIO']
     time_window = config_params['TIME_WINDOW']
@@ -231,7 +233,8 @@ def simulate_backtest_fast(bars_list, config_params, point_value=1.0):
             pass 
             
         window = bars_list[i-lookback:i+1]
-        setup = detect_ict_setup_fast(window, config_params)
+        bias = htf_bias_dict.get(dt) if htf_bias_dict else None
+        setup = detect_ict_setup_fast(window, config_params, htf_bias=bias)
         
         if setup:
             trade_side = setup['side']

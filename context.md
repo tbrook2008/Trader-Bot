@@ -6,7 +6,7 @@ Python autonomous ICT trading bot for a $50K Topstep Combine. Uses real ICT Smar
 ## 2. Architecture (V2)
 - Authentication via /Auth/loginKey
 - Bar fetching via /History/retrieveBars with caching (30s TTL)
-- HTF bias detection (30m swing structure)
+- HTF bias detection (Dynamic: 30m swing structure for lower timeframes, 4H/240m structure for >=30m execution)
 - PDH/PDL high-conviction detection (daily bars, unit=4)
 - ICT setup detection: Sweep → MSS (60% body displacement) → OTE zone (50-85% fib retracement) → FVG → Rejection confirm
 - Sector correlation check (blocks same-sector concurrent trades)
@@ -114,3 +114,5 @@ Before ANY code change: read context.md. After ANY change: update context.md, co
 - Fixed REWARD_RISK_RATIO → RR_RATIO AttributeError
 - Fixed tf_symbols/bars_data scope bug in trailing stop
 - Fixed df_tf entry price fallback-to-0 bug
+- Synchronized Grid Search Optimizer with Live Bot logic (HTF bias, MSS, OTE)
+- Dynamic HTF bias structure (30m vs 4H depending on execution timeframe)

@@ -46,13 +46,45 @@ def build_resampled_dict(df, timeframes):
         resampled_data[tf] = bars
     return resampled_data
 
+def build_htf_bias_series(df, htf_minutes):
+    res_df = df.resample(f'{htf_minutes}min').agg({'high': 'max', 'low': 'min'}).dropna()
+    biases = {}
+    for i in range(20, len(res_df)):
+        window = res_df.iloc[i-20:i]
+        swing_highs = []
+        swing_lows = []
+        for k in range(1, len(window) - 1):
+            if window.iloc[k]['high'] > window.iloc[k-1]['high'] and window.iloc[k]['high'] > window.iloc[k+1]['high']:
+                swing_highs.append(window.iloc[k]['high'])
+            if window.iloc[k]['low'] < window.iloc[k-1]['low'] and window.iloc[k]['low'] < window.iloc[k+1]['low']:
+                swing_lows.append(window.iloc[k]['low'])
+                
+        htf_bias = None
+        if len(swing_highs) >= 2 and len(swing_lows) >= 2:
+            hh = swing_highs[-1] > swing_highs[-2]
+            hl = swing_lows[-1] > swing_lows[-2]
+            lh = swing_highs[-1] < swing_highs[-2]
+            ll = swing_lows[-1] < swing_lows[-2]
+            if hh and hl:
+                htf_bias = "buy"
+            elif lh and ll:
+                htf_bias = "sell"
+                
+        biases[res_df.index[i]] = htf_bias
+        
+    bias_series = pd.Series(biases).reindex(df.index, method='ffill')
+    return bias_series.to_dict()
+
 def process_config(args):
-    global data_dict_is, data_dict_oos
+    global data_dict_is, data_dict_oos, bias_30m_is, bias_240m_is, bias_30m_oos, bias_240m_oos
     config, point_value = args
+    
+    b_is = bias_240m_is if config['TIMEFRAME'] >= 30 else bias_30m_is
+    b_oos = bias_240m_oos if config['TIMEFRAME'] >= 30 else bias_30m_oos
     
     # 1. Run In-Sample
     is_bars = data_dict_is[config['TIMEFRAME']]
-    is_res = simulate_backtest_fast(is_bars, config, point_value)
+    is_res = simulate_backtest_fast(is_bars, config, point_value, htf_bias_dict=b_is)
     
     # In-Sample Filters
     if is_res['win_rate'] < 45.0 or is_res['net_pnl'] <= 1000 or is_res['max_dd'] >= 6 or is_res['trades'] < 20:
@@ -60,7 +92,7 @@ def process_config(args):
         
     # 2. Run Out-of-Sample
     oos_bars = data_dict_oos[config['TIMEFRAME']]
-    oos_res = simulate_backtest_fast(oos_bars, config, point_value)
+    oos_res = simulate_backtest_fast(oos_bars, config, point_value, htf_bias_dict=b_oos)
     
     # Out-of-Sample Filters
     if oos_res['win_rate'] < 40.0 or oos_res['net_pnl'] <= 0 or oos_res['max_dd'] >= 8:
@@ -83,7 +115,7 @@ def process_config(args):
     }
 
 def main(asset, point_value, scale_factor=1.0):
-    global data_dict_is, data_dict_oos
+    global data_dict_is, data_dict_oos, bias_30m_is, bias_240m_is, bias_30m_oos, bias_240m_oos
     filepath = f"historical_{asset.lower()}_2yr.csv"
     if not os.path.exists(filepath):
         print(f"❌ Cannot find data file {filepath}")
@@ -105,6 +137,12 @@ def main(asset, point_value, scale_factor=1.0):
     split_idx = int(len(df) * 0.6) # 60% IS, 40% OOS
     df_is = df.iloc[:split_idx]
     df_oos = df.iloc[split_idx:]
+    
+    print(f"⏳ Calculating 30m and 240m HTF Bias structures for {asset}...")
+    bias_30m_is = build_htf_bias_series(df_is, 30)
+    bias_240m_is = build_htf_bias_series(df_is, 240)
+    bias_30m_oos = build_htf_bias_series(df_oos, 30)
+    bias_240m_oos = build_htf_bias_series(df_oos, 240)
     
     print(f"⏳ Resampling Data and Calculating ATR for {asset} IS and OOS...")
     data_dict_is = build_resampled_dict(df_is, PARAM_GRID['TIMEFRAME'])
