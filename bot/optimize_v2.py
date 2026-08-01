@@ -40,6 +40,25 @@ def check_rejection_fast(bars_since_fvg, zone_low, zone_high, direction):
     else:
         return last_close > zone_high
 
+
+def is_fractal_high_fast(bars, idx, n=2):
+    if idx < n or idx >= len(bars) - n:
+        return False
+    val = bars[idx]['high']
+    for i in range(1, n + 1):
+        if bars[idx - i]['high'] >= val or bars[idx + i]['high'] >= val:
+            return False
+    return True
+
+def is_fractal_low_fast(bars, idx, n=2):
+    if idx < n or idx >= len(bars) - n:
+        return False
+    val = bars[idx]['low']
+    for i in range(1, n + 1):
+        if bars[idx - i]['low'] <= val or bars[idx + i]['low'] <= val:
+            return False
+    return True
+
 def detect_ict_setup_fast(bars_slice, config_params, htf_bias=None):
     current_atr = bars_slice[-1]['atr']
     if pd.isna(current_atr) or current_atr == 0:
@@ -51,16 +70,11 @@ def detect_ict_setup_fast(bars_slice, config_params, htf_bias=None):
     current_price = bars_slice[-1]['close']
     
     # Bearish - Only allow if htf_bias is not "buy" (i.e. "sell" or None)
-    highest_idx = 0
-    highest_val = -float('inf')
     if htf_bias != "buy":
-        for i, b in enumerate(bars_slice):
-            if b['high'] > highest_val:
-                highest_val = b['high']
-                highest_idx = i
-                
-        if highest_idx < len(bars_slice) - 2:
-            sweep_high = highest_val
+        fractal_highs = [i for i in range(3, len(bars_slice)-2) if is_fractal_high_fast(bars_slice, i, n=2)]
+        if fractal_highs:
+            highest_idx = max(fractal_highs, key=lambda idx: bars_slice[idx]['high'])
+            sweep_high = bars_slice[highest_idx]['high']
             sweep_low_threshold = bars_slice[highest_idx]['low']
             
             # MSS check
@@ -95,16 +109,11 @@ def detect_ict_setup_fast(bars_slice, config_params, htf_bias=None):
                                     return {"side": "sell", "risk_points": risk_points}
                                 
     # Bullish - Only allow if htf_bias is not "sell" (i.e. "buy" or None)
-    lowest_idx = 0
-    lowest_val = float('inf')
     if htf_bias != "sell":
-        for i, b in enumerate(bars_slice):
-            if b['low'] < lowest_val:
-                lowest_val = b['low']
-                lowest_idx = i
-                
-        if lowest_idx < len(bars_slice) - 2:
-            sweep_low = lowest_val
+        fractal_lows = [i for i in range(3, len(bars_slice)-2) if is_fractal_low_fast(bars_slice, i, n=2)]
+        if fractal_lows:
+            lowest_idx = min(fractal_lows, key=lambda idx: bars_slice[idx]['low'])
+            sweep_low = bars_slice[lowest_idx]['low']
             sweep_high_threshold = bars_slice[lowest_idx]['high']
             
             # MSS check
@@ -181,9 +190,9 @@ def simulate_backtest_fast(bars_list, config_params, point_value=1.0, htf_bias_d
         if in_position:
             if trade_side == "buy":
                 pnl = current_bar['high'] - entry_price
-                if not be_activated and pnl >= risk_points:
-                    be_activated = True
-                    stop_loss = entry_price
+                # if not be_activated and pnl >= risk_points:
+                #     be_activated = True
+                #     stop_loss = entry_price
                     
                 if current_bar['low'] <= stop_loss:
                     loss_pts = entry_price - stop_loss
@@ -203,9 +212,9 @@ def simulate_backtest_fast(bars_list, config_params, point_value=1.0, htf_bias_d
                     in_position = False
             elif trade_side == "sell":
                 pnl = entry_price - current_bar['low']
-                if not be_activated and pnl >= risk_points:
-                    be_activated = True
-                    stop_loss = entry_price
+                # if not be_activated and pnl >= risk_points:
+                #     be_activated = True
+                #     stop_loss = entry_price
                     
                 if current_bar['high'] >= stop_loss:
                     loss_pts = stop_loss - entry_price

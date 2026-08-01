@@ -28,7 +28,7 @@ class BaseConfig:
     # 2. Risk Management
     CONTRACT_QTY = 1
     MAX_CONSECUTIVE_LOSSES = 3
-    USE_TRAILING_STOP = True
+    USE_TRAILING_STOP = False
     TRAILING_ACTIVATION_RR = 1.0
 
 class BotConfig(BaseConfig):
@@ -54,14 +54,14 @@ HOLY_GRAIL_CONFIGS = {
         TIME_WINDOW={"start_h": 13, "start_m": 0, "end_h": 15, "end_m": 30}
     ),
     "MES": BotConfig(
-        "MES NY Afternoon",
+        "MES Strategy #1",
         TIMEFRAME=3,
         RR_RATIO=1.0,
-        LOOKBACK_BARS=15,
+        LOOKBACK_BARS=30,
         MIN_RISK_ATR_MULTIPLIER=0.5,
-        MAX_RISK_ATR_MULTIPLIER=6.0,
+        MAX_RISK_ATR_MULTIPLIER=5.0,
         MIN_FVG_ATR_MULTIPLIER=0.25,
-        TIME_WINDOW={"start_h": 13, "start_m": 0, "end_h": 15, "end_m": 30}
+        TIME_WINDOW={"start_h": 9, "start_m": 30, "end_h": 16, "end_m": 0}
     )
 }
 
@@ -83,6 +83,24 @@ def check_rejection(bars_since_fvg, zone_low, zone_high, direction):
         return last_close < zone_low
     else:
         return last_close > zone_high
+
+def is_fractal_high(df, idx, n=3):
+    if idx < n or idx >= len(df) - n:
+        return False
+    val = df.loc[idx, 'high']
+    for i in range(1, n + 1):
+        if df.loc[idx - i, 'high'] >= val or df.loc[idx + i, 'high'] >= val:
+            return False
+    return True
+
+def is_fractal_low(df, idx, n=3):
+    if idx < n or idx >= len(df) - n:
+        return False
+    val = df.loc[idx, 'low']
+    for i in range(1, n + 1):
+        if df.loc[idx - i, 'low'] <= val or df.loc[idx + i, 'low'] <= val:
+            return False
+    return True
 
 def detect_ict_setup(df, df_30m, df_1d, symbol, config):
     if len(df) < config.LOOKBACK_BARS:
@@ -146,8 +164,10 @@ def detect_ict_setup(df, df_30m, df_1d, symbol, config):
     
     # 1. Bearish Setup (Short)
     if htf_bias in [None, "sell"]:
-        highest_idx = recent_bars['high'].idxmax()
-        if highest_idx < len(recent_bars) - 2:
+        fractal_highs = [i for i in range(3, len(recent_bars)-2) if is_fractal_high(recent_bars, i, n=3)]
+        if fractal_highs:
+            # Find the most prominent structural high in the lookback window
+            highest_idx = max(fractal_highs, key=lambda idx: recent_bars.loc[idx, 'high'])
             sweep_high = recent_bars.loc[highest_idx, 'high']
             sweep_low_threshold = recent_bars.loc[highest_idx, 'low']
             
@@ -196,8 +216,10 @@ def detect_ict_setup(df, df_30m, df_1d, symbol, config):
 
     # 2. Bullish Setup (Long)
     if htf_bias in [None, "buy"]:
-        lowest_idx = recent_bars['low'].idxmin()
-        if lowest_idx < len(recent_bars) - 2: 
+        fractal_lows = [i for i in range(3, len(recent_bars)-2) if is_fractal_low(recent_bars, i, n=3)]
+        if fractal_lows:
+            # Find the most prominent structural low in the lookback window
+            lowest_idx = min(fractal_lows, key=lambda idx: recent_bars.loc[idx, 'low'])
             sweep_low = recent_bars.loc[lowest_idx, 'low']
             sweep_high_threshold = recent_bars.loc[lowest_idx, 'high']
             
@@ -321,36 +343,8 @@ def main():
                             
                     elif is_open and symbol in trade_state:
                         # Local Trailing Stop at +1R
-                        entry = trade_state[symbol]['entry']
-                        side = trade_state[symbol]['side']
-                        risk = trade_state[symbol]['risk']
-                        # Try to get latest price from cache (may not be available on first loop)
-                        try:
-                            tf = HOLY_GRAIL_CONFIGS[symbol].TIMEFRAME if symbol in HOLY_GRAIL_CONFIGS else 1
-                            cached_bars = _bars_cache.get(tf, {}).get(symbol, [])
-                            if cached_bars and entry != 0:
-                                curr_price = cached_bars[-1]['close']
-                                pnl_pts = (curr_price - entry) if side == "buy" else (entry - curr_price)
-                                
-                                if pnl_pts >= risk and not trade_state[symbol]['be_activated']:
-                                    trade_state[symbol]['be_activated'] = True
-                                    logger.info(f"🛡️ Trailing Stop: {symbol} hit +1R ({pnl_pts:.2f} pts). Stop moved to Break-Even locally!")
-                                    
-                                if trade_state[symbol]['be_activated'] and pnl_pts <= 0:
-                                    logger.warning(f"🛡️ Trailing Stop Hit: Flattening {symbol} at Break-Even!")
-                                    topstep.flatten_all_positions([symbol])
-                                    cid = topstep.get_contract_id(symbol)
-                                    if cid:
-                                        topstep.cancel_orphaned_brackets(cid)
-                                    in_position[symbol] = False
-                                    # Clear signals for this symbol so the same FVG zone can be re-entered after a close
-                                    last_signals = {s for s in last_signals if f"-{symbol}-" not in s}
-                                    if balance_before_trade[symbol] is not None:
-                                        logger.info(f"📈 Trade for {symbol} stopped at BE (${balance - balance_before_trade[symbol]:.2f}).")
-                                    balance_before_trade[symbol] = None
-                                    del trade_state[symbol]
-                        except Exception as trail_err:
-                            logger.debug(f"Trailing stop check skipped: {trail_err}")
+                        # DISABLED: Backtesting proved that dragging stops to breakeven destroyed 92% of our holy grail edge.
+                        pass
                 
             # 1. Check for Weekend / Maintenance closures
             # Weekend closure (Friday 5:00 PM ET to Sunday 6:00 PM ET)
