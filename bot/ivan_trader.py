@@ -298,30 +298,36 @@ def main():
                         if symbol in trade_state:
                             del trade_state[symbol]
                             
-                    elif is_open and symbol in trade_state and tf_symbols:
+                    elif is_open and symbol in trade_state:
                         # Local Trailing Stop at +1R
                         entry = trade_state[symbol]['entry']
                         side = trade_state[symbol]['side']
                         risk = trade_state[symbol]['risk']
-                        # Try to get latest price from cache
-                        tf = HOLY_GRAIL_CONFIGS[symbol].TIMEFRAME if symbol in HOLY_GRAIL_CONFIGS else 1
-                        if tf in bars_data and symbol in bars_data[tf] and bars_data[tf][symbol]:
-                            curr_price = bars_data[tf][symbol][-1]['close']
-                            pnl_pts = (curr_price - entry) if side == "buy" else (entry - curr_price)
-                            
-                            if pnl_pts >= risk and not trade_state[symbol]['be_activated']:
-                                trade_state[symbol]['be_activated'] = True
-                                logger.info(f"🛡️ Trailing Stop: {symbol} hit +1R ({pnl_pts:.2f} pts). Stop moved to Break-Even locally!")
+                        # Try to get latest price from cache (may not be available on first loop)
+                        try:
+                            tf = HOLY_GRAIL_CONFIGS[symbol].TIMEFRAME if symbol in HOLY_GRAIL_CONFIGS else 1
+                            cached_bars = _bars_cache.get(tf, {}).get(symbol, [])
+                            if cached_bars and entry != 0:
+                                curr_price = cached_bars[-1]['close']
+                                pnl_pts = (curr_price - entry) if side == "buy" else (entry - curr_price)
                                 
-                            if trade_state[symbol]['be_activated'] and pnl_pts <= 0:
-                                logger.warning(f"🛡️ Trailing Stop Hit: Flattening {symbol} at Break-Even!")
-                                topstep.flatten_all_positions([symbol])
-                                topstep.cancel_orphaned_brackets(topstep.get_contract_id(symbol))
-                                in_position[symbol] = False
-                                if balance_before_trade[symbol] is not None:
-                                    logger.info(f"📈 Trade for {symbol} stopped at BE (${balance - balance_before_trade[symbol]:.2f}).")
-                                balance_before_trade[symbol] = None
-                                del trade_state[symbol]
+                                if pnl_pts >= risk and not trade_state[symbol]['be_activated']:
+                                    trade_state[symbol]['be_activated'] = True
+                                    logger.info(f"🛡️ Trailing Stop: {symbol} hit +1R ({pnl_pts:.2f} pts). Stop moved to Break-Even locally!")
+                                    
+                                if trade_state[symbol]['be_activated'] and pnl_pts <= 0:
+                                    logger.warning(f"🛡️ Trailing Stop Hit: Flattening {symbol} at Break-Even!")
+                                    topstep.flatten_all_positions([symbol])
+                                    cid = topstep.get_contract_id(symbol)
+                                    if cid:
+                                        topstep.cancel_orphaned_brackets(cid)
+                                    in_position[symbol] = False
+                                    if balance_before_trade[symbol] is not None:
+                                        logger.info(f"📈 Trade for {symbol} stopped at BE (${balance - balance_before_trade[symbol]:.2f}).")
+                                    balance_before_trade[symbol] = None
+                                    del trade_state[symbol]
+                        except Exception as trail_err:
+                            logger.debug(f"Trailing stop check skipped: {trail_err}")
                 
             # 1. Check for Weekend / Maintenance closures
             # Weekend closure (Friday 5:00 PM ET to Sunday 6:00 PM ET)
@@ -415,6 +421,7 @@ def main():
                     
                 # Sector Correlation Check has been removed to allow concurrent trades
                 setup = None
+                df_tf = None
                 active_config = HOLY_GRAIL_CONFIGS.get(symbol)
                 
                 if not active_config:
@@ -473,18 +480,18 @@ def main():
                         futures_ticks = int(setup['risk_points'] / tick_sz)
                         target_ticks = int(futures_ticks * active_config.RR_RATIO)
                         futures_ticks = max(4, futures_ticks)
-                        logger.info(f"Live Order -> Stop Loss: {int(setup['risk_points'] / tick_sz)} Ticks | Take Profit: {int(setup['risk_points'] * active_config.REWARD_RISK_RATIO / tick_sz)} Ticks")
+                        logger.info(f"Live Order -> Stop Loss: {int(setup['risk_points'] / tick_sz)} Ticks | Take Profit: {int(setup['risk_points'] * active_config.RR_RATIO / tick_sz)} Ticks")
                         
                         # LIVE MODE
-                        logger.info(f"💰 Risk: ${dollar_risk:.2f} | R:R: 1:{active_config.REWARD_RISK_RATIO}")
+                        logger.info(f"💰 Risk: ${dollar_risk:.2f} | R:R: 1:{active_config.RR_RATIO}")
                         
                         if topstep.place_market_order(setup['symbol'], setup['side'], active_config.CONTRACT_QTY, 
-                                                      int(setup['risk_points'] * active_config.REWARD_RISK_RATIO / tick_sz), 
+                                                      int(setup['risk_points'] * active_config.RR_RATIO / tick_sz), 
                                                       int(setup['risk_points'] / tick_sz)):
                             in_position[setup['symbol']] = True
                             balance_before_trade[setup['symbol']] = balance
                             trade_state[setup['symbol']] = {
-                                'entry': df_tf.iloc[-1]['close'] if 'df_tf' in locals() else 0,
+                                'entry': df_tf.iloc[-1]['close'],
                                 'side': setup['side'],
                                 'risk': setup['risk_points'],
                                 'be_activated': False
