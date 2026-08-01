@@ -116,7 +116,7 @@ def process_config(args):
 
 def main(asset, point_value, scale_factor=1.0):
     global data_dict_is, data_dict_oos, bias_30m_is, bias_240m_is, bias_30m_oos, bias_240m_oos
-    filepath = f"historical_{asset.lower()}_2yr.csv"
+    filepath = f"data/historical/historical_{asset.lower()}_2yr.csv"
     if not os.path.exists(filepath):
         print(f"❌ Cannot find data file {filepath}")
         return
@@ -168,7 +168,7 @@ def main(asset, point_value, scale_factor=1.0):
     
     results.sort(key=lambda x: x['total_pnl'], reverse=True)
     
-    output_file = f'best_params_{asset.lower()}.json'
+    output_file = f'data/optimization/best_params_{asset.lower()}.json'
     with open(output_file, 'w') as f:
         # Convert it back to the format the bot expects for best_params (just the config dicts)
         final_configs = [r['config'] for r in results[:20]]

@@ -20,8 +20,7 @@ Python autonomous ICT trading bot for a $50K Topstep Combine. Uses real ICT Smar
 | Symbol | NAME | TIMEFRAME | LOOKBACK_BARS | RR_RATIO | MIN_RISK_ATR | MAX_RISK_ATR | MIN_FVG_ATR | TIME_WINDOW |
 |--------|------|-----------|---------------|----------|--------------|--------------|-------------|-------------|
 | **MNQ** | MNQ NY Afternoon | 15 | 20 | 1.0 | 0.5 | 5.0 | 0.5 | 13:00 - 15:30 |
-| **MES** | MES NY Open | 5 | 30 | 1.0 | 0.5 | 5.0 | 0.5 | 08:30 - 11:30 |
-| **MYM** | MYM NY Afternoon | 15 | 20 | 1.5 | 0.5 | 3.0 | 1.0 | 13:00 - 15:30 |
+| **MES** | MES NY Afternoon | 3 | 15 | 1.0 | 0.5 | 6.0 | 0.25 | 13:00 - 15:30 |
 
 ## 4. INSTRUMENT_CONFIG
 

@@ -22,7 +22,7 @@ load_dotenv()
 topstep = TopstepXClient()
 
 # Directly scan the futures symbols now!
-SYMBOLS = ["MNQ", "MES", "MYM"]
+SYMBOLS = ["MNQ", "MES"]
 
 class BaseConfig:
     # 2. Risk Management
@@ -54,23 +54,13 @@ HOLY_GRAIL_CONFIGS = {
         TIME_WINDOW={"start_h": 13, "start_m": 0, "end_h": 15, "end_m": 30}
     ),
     "MES": BotConfig(
-        "MES NY Open",
-        TIMEFRAME=5,
+        "MES NY Afternoon",
+        TIMEFRAME=3,
         RR_RATIO=1.0,
-        LOOKBACK_BARS=30,
+        LOOKBACK_BARS=15,
         MIN_RISK_ATR_MULTIPLIER=0.5,
-        MAX_RISK_ATR_MULTIPLIER=5.0,
-        MIN_FVG_ATR_MULTIPLIER=0.5,
-        TIME_WINDOW={"start_h": 8, "start_m": 30, "end_h": 11, "end_m": 30}
-    ),
-    "MYM": BotConfig(
-        "MYM NY Afternoon",
-        TIMEFRAME=15,
-        RR_RATIO=1.5,
-        LOOKBACK_BARS=20,
-        MIN_RISK_ATR_MULTIPLIER=0.5,
-        MAX_RISK_ATR_MULTIPLIER=3.0,
-        MIN_FVG_ATR_MULTIPLIER=1.0,
+        MAX_RISK_ATR_MULTIPLIER=6.0,
+        MIN_FVG_ATR_MULTIPLIER=0.25,
         TIME_WINDOW={"start_h": 13, "start_m": 0, "end_h": 15, "end_m": 30}
     )
 }
