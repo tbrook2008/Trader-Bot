@@ -45,8 +45,8 @@ class BotConfig(BaseConfig):
 HOLY_GRAIL_CONFIGS = {
     "MNQ": BotConfig(
         "MNQ NY Afternoon",
-        TIMEFRAME=15,
-        RR_RATIO=1.0,
+        TIMEFRAME=30,
+        RR_RATIO=2.0,
         LOOKBACK_BARS=20,
         MIN_RISK_ATR_MULTIPLIER=0.5,
         MAX_RISK_ATR_MULTIPLIER=5.0,
@@ -186,12 +186,12 @@ def detect_ict_setup(df, df_30m, df_1d, symbol, config):
                             # Fibonacci OTE Filter
                             swing_low = recent_bars.loc[highest_idx:i+2, 'low'].min()
                             move_range = sweep_high - swing_low
-                            fib_500 = sweep_high - (move_range * 0.500)
-                            fib_850 = sweep_high - (move_range * 0.850)
+                            fib_618 = sweep_high - (move_range * 0.618)
+                            fib_790 = sweep_high - (move_range * 0.790)
                             
                             # Price must currently be in the OTE zone
-                            # OTE zone: 50%-85% retracement (standard ICT OTE 61.8-79% relaxed for polling bot latency)
-                            if fib_850 <= current_price <= fib_500:
+                            # OTE zone: strict ICT 61.8%-79% retracement
+                            if fib_790 <= current_price <= fib_618:
                                 bars_since_fvg = recent_bars.iloc[i + 2:]
                                 if check_rejection(bars_since_fvg, zone_low, zone_high, "sell"):
                                     conviction = pdh is not None and abs(sweep_high - pdh) <= (0.5 * current_atr)
@@ -236,11 +236,11 @@ def detect_ict_setup(df, df_30m, df_1d, symbol, config):
                             # Fibonacci OTE Filter
                             swing_high = recent_bars.loc[lowest_idx:i+2, 'high'].max()
                             move_range = swing_high - sweep_low
-                            fib_500 = sweep_low + (move_range * 0.500)
-                            fib_850 = sweep_low + (move_range * 0.850)
+                            fib_618 = sweep_low + (move_range * 0.618)
+                            fib_790 = sweep_low + (move_range * 0.790)
                             
-                            # OTE zone: 50%-85% retracement (standard ICT OTE 61.8-79% relaxed for polling bot latency)
-                            if fib_500 <= current_price <= fib_850:
+                            # OTE zone: strict ICT 61.8%-79% retracement
+                            if fib_618 <= current_price <= fib_790:
                                 bars_since_fvg = recent_bars.iloc[i + 2:]
                                 if check_rejection(bars_since_fvg, zone_low, zone_high, "buy"):
                                     conviction = pdl is not None and abs(sweep_low - pdl) <= (0.5 * current_atr)
