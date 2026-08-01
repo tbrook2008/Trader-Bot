@@ -412,14 +412,23 @@ class TopstepXClient:
                 results[symbol] = []
                 continue
                 
+            if unit_number >= 1440:
+                payload_unit = 4
+                payload_unit_number = 1
+                payload_limit = max(count, 5)
+            else:
+                payload_unit = 2
+                payload_unit_number = unit_number
+                payload_limit = count
+
             payload = {
                 "contractId": contract_id,
                 "live": False,
                 "startTime": (datetime.now() - timedelta(days=7)).isoformat() + "Z",
                 "endTime": datetime.now().isoformat() + "Z",
-                "unit": 2, # Minute
-                "unitNumber": unit_number,
-                "limit": count
+                "unit": payload_unit,
+                "unitNumber": payload_unit_number,
+                "limit": payload_limit
             }
                 
             try:
