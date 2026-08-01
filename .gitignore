@@ -4,8 +4,7 @@ __pycache__/
 *.pyc
 .pytest_cache/
 logs/
-data/*.sqlite*
-data/*.csv
+data/
 .DS_Store
 Thumbs.db
 archive/
