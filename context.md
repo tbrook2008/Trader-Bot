@@ -1,103 +1,116 @@
-# V2 Python/Topstep ATR-Based ICT Bot Architecture Context
+# IvanTrades V2 — Context & Architecture
 
 ## 1. Project Vision
-Python autonomous ICT trading bot for $50K Topstep Combine. Refactored from a Node.js prototype into a highly robust Python V2 architecture to maximize reliability, handle direct API execution, and implement strict prop firm risk management.
+Python autonomous ICT trading bot for a $50K Topstep Combine. Uses real ICT Smart Money Concepts (sweep→MSS→OTE→FVG→rejection). No indicators. No VWAP. No RSI. Pure price action.
 
-## 2. Current Architecture (V2) - Data Flow
-*   **Authentication & Market Data:** `TopstepXClient` authenticates via `/Auth/loginKey` (handling 401 token expiry automatically) and fetches live/historical bars directly via `/History/retrieveBars`.
-*   **Execution Core:** `bot/ivan_trader.py` runs `HOLY_GRAIL_CONFIGS` which applies per-symbol, ATR-normalized `BotConfig` definitions during specified `TIME_WINDOW`s.
-*   **ICT Setup Detection:** Uses a precise structural pattern: Sweep -> Retrace -> Rejection -> FVG. 
-    *   **ATR-Normalized:** Minimum FVG gap and risk bounds are calculated as multipliers of a 14-period ATR (rather than fixed points).
-*   **Correlation & Exposure:** Pre-trade checks against `INSTRUMENT_CONFIG` block new entries if the bot already has an open position in the same sector (e.g., `equity_index`).
-*   **Deduplication:** FVG timestamp-based hashing (`side-symbol-timestamp-configNAME`) prevents revenge trading or double-entries on the same setup.
-*   **News Filter:** `bot/news_filter.py` parses the ForexFactory XML feed, converted to US/Eastern, dynamically tracking USD High Impact (Red Folder) events.
-*   **Order Execution:** Submits market bracket orders (entry, SL, TP) directly to Topstep via `/Order/place`.
-*   **Position Tracking:** Real-time net position validation primarily via `/Position/search`, with a robust fallback to `/Order/search` working orders if the position endpoint fails.
+## 2. Architecture (V2)
+- Authentication via /Auth/loginKey
+- Bar fetching via /History/retrieveBars with caching (30s TTL)
+- HTF bias detection (30m swing structure)
+- PDH/PDL high-conviction detection (daily bars, unit=4)
+- ICT setup detection: Sweep → MSS (60% body displacement) → OTE zone (50-85% fib retracement) → FVG → Rejection confirm
+- Sector correlation check (blocks same-sector concurrent trades)
+- Lunch hour exclusion (12-1 PM ET)
+- Live order execution via /Order/place with bracket TP/SL
+- Trailing stop (software-side BE at +1R)
+- Position tracking via /Position/search primary, /Order/search fallback
 
-## 3. Strategy Details (HOLY_GRAIL_CONFIGS)
-Active primarily on Micro E-Mini Futures with Full NY Session exposure:
+## 3. HOLY_GRAIL_CONFIGS (Per-Symbol Strategy Configs)
 
-*   **MNQ (Micro Nasdaq):**
-    *   Strategy: `MNQ Full NY`
-    *   Timeframe: 5 min
-    *   Lookback: 15 bars
-    *   Risk/Reward: 3.0
-    *   Risk Bounds: 0.5x to 6.0x ATR
-    *   Min FVG Size: 1.0x ATR
-    *   Time Window: 09:30 - 16:00 ET
-
-*   **MES (Micro S&P 500):**
-    *   Strategy: `MES Full NY`
-    *   Timeframe: 10 min
-    *   Lookback: 20 bars
-    *   Risk/Reward: 3.0
-    *   Risk Bounds: 0.5x to 6.0x ATR
-    *   Min FVG Size: 0.1x ATR
-    *   Time Window: 09:30 - 16:00 ET
+| Symbol | NAME | TIMEFRAME | LOOKBACK_BARS | RR_RATIO | MIN_RISK_ATR | MAX_RISK_ATR | MIN_FVG_ATR | TIME_WINDOW |
+|--------|------|-----------|---------------|----------|--------------|--------------|-------------|-------------|
+| **MNQ** | MNQ NY Afternoon | 15 | 20 | 1.0 | 0.5 | 5.0 | 0.5 | 13:00 - 15:30 |
+| **MES** | MES NY Open | 5 | 30 | 1.0 | 0.5 | 5.0 | 0.5 | 08:30 - 11:30 |
+| **MYM** | MYM NY Afternoon | 15 | 20 | 1.5 | 0.5 | 3.0 | 1.0 | 13:00 - 15:30 |
 
 ## 4. INSTRUMENT_CONFIG
 
-| Symbol | Sector | Tick Size | Tick Value | Point Value | Sniper Window (ET) |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **MNQ** | `equity_index` | 0.25 | $0.50 | $2.00 | 13:00 - 15:30 |
-| **MES** | `equity_index` | 0.25 | $1.25 | $5.00 | 13:00 - 15:30 |
-| **MYM** | `equity_index` | 1.00 | $0.50 | $0.50 | 13:00 - 15:30 |
-| **M2K** | `equity_index` | 0.10 | $0.50 | $5.00 | 13:00 - 15:30 |
-| **NQ** | `equity_index` | 0.25 | $5.00 | $20.00 | 13:00 - 15:30 |
-| **ES** | `equity_index` | 0.25 | $12.50 | $50.00 | 13:00 - 15:30 |
-| **GC** | `metals` | 0.10 | $10.00 | $100.00 | 08:00 - 10:00 |
-| **CL** | `energy` | 0.01 | $10.00 | $1000.00| 09:00 - 11:30 |
+| Symbol | Sector | Tick Size | Tick Value | Point Value | Sniper Window |
+|--------|--------|-----------|------------|-------------|---------------|
+| **MNQ** | equity_index | 0.25 | $0.50 | $2.00 | 13:00 - 15:30 |
+| **MES** | equity_index | 0.25 | $1.25 | $5.00 | 13:00 - 15:30 |
+| **MYM** | equity_index | 1.00 | $0.50 | $0.50 | 13:00 - 15:30 |
+| **M2K** | equity_index | 0.10 | $0.50 | $5.00 | 13:00 - 15:30 |
+| **NQ** | equity_index | 0.25 | $5.00 | $20.00 | 13:00 - 15:30 |
+| **ES** | equity_index | 0.25 | $12.50 | $50.00 | 13:00 - 15:30 |
+| **GC** | metals | 0.10 | $10.00 | $100.00 | 08:00 - 10:00 |
+| **CL** | energy | 0.01 | $10.00 | $1000.00 | 09:00 - 11:30 |
 
-## 5. Risk Management Layers (Order of Precedence)
-1.  **$48,000 Hard Floor:** If account equity dips below $48K, permanent shutdown prevents combine failure.
-2.  **$53,000 Goal:** If balance >= $53,000, combine is passed, permanent shutdown.
-3.  **$1,450 Daily Profit Cap:** Halts execution to lock in daily wins; resumes the next trading day.
-4.  **MAX_CONSECUTIVE_LOSSES = 3:** Pauses bot execution until the next trading day (does NOT permanently exit).
-5.  **EOD Liquidation:** Hard stop at 4:45 PM ET flattens all open positions and cancels working orders to comply with Topstep rules.
-6.  **News Blackout:** Auto-flattens and halts entries 10 minutes before and 15 minutes after USD High Impact events.
-7.  **Pre-Trade Dollar Risk Check:** Verifies that a generated signal's absolute dollar risk won't breach the $48K hard floor before entering.
-8.  **Sector Exposure Block:** Prevents correlated overlapping trades (e.g., won't enter MNQ if already long MES).
+## 5. Risk Management Layers (in order of precedence)
+1. $53,000 goal → permanent shutdown (combine passed)
+2. $48,000 hard floor → permanent shutdown (violation prevention)
+3. $1,450 daily profit cap → pause until tomorrow
+4. 3 consecutive losses → pause until next trading day (resumes at midnight ET)
+5. EOD liquidation at 4:45 PM ET
+6. News blackout (10 min before / 15 min after USD High Impact events via ForexFactory XML)
+7. Sector correlation block (no two trades in same sector simultaneously)
+8. Pre-trade dollar risk check (balance - dollar_risk >= $48,000)
+9. Lunch hour exclusion (12:00-1:00 PM ET)
+10. Weekend closure (Friday 5PM - Sunday 6PM ET)
 
-## 6. Key Files Table
-| File | Path | Description |
-| :--- | :--- | :--- |
-| **Execution Core** | `bot/ivan_trader.py` | Main loop, setup detection, risk checks. |
-| **Topstep API Client** | `bot/execution/topstep_client.py` | Handles authentication, market data, and order routing. |
-| **Instrument Config** | `bot/instrument_config.py` | Defines tick sizes, point values, and sectors for symbol matrix. |
-| **News Filter** | `bot/news_filter.py` | ForexFactory XML parser and blackout logic. |
-| **Global Config** | `bot/config.py` | Global tunable parameters (legacy Alpaca vars exist but V2 uses Topstep direct). |
-| **Documentation** | `README.md` | General project overview. |
+## 6. Key Files
 
-## 7. Running the Bot
+| File | Purpose |
+|------|---------|
+| `bot/ivan_trader.py` | Main event loop, strategy configuration, setup detection, risk enforcement. |
+| `bot/execution/topstep_client.py` | TopstepX REST API integration (auth, orders, positions, bars). |
+| `bot/instrument_config.py` | Master dictionary for tick values, point values, and symbol sectors. |
+| `bot/config.py` | General configuration constants and environment variable loading. |
+| `bot/news_filter.py` | Scrapes ForexFactory for high-impact USD events to trigger news blackouts. |
+
+## 7. Topstep API Endpoints Used
+- `/Auth/loginKey`
+- `/Account/search`
+- `/Contract/search`
+- `/History/retrieveBars`
+- `/Order/place`
+- `/Order/search`
+- `/Order/cancel`
+- `/Position/search`
+- `/Position/closeContract`
+
+## 8. Environment Variables
+- `TOPSTEPX_API_URL`
+- `TOPSTEPX_USERNAME`
+- `TOPSTEPX_API_KEY`
+- `ALPACA_API_KEY`
+- `ALPACA_SECRET_KEY`
+- `PAPER_TRADING`
+
+## 9. Running the Bot
 ```bash
-cd Desktop/topstep-trader-bot-v2
-export PYTHONPATH=.
+cd ~/Desktop/topstep-trader-bot-v2
 python3 -m bot.ivan_trader
 ```
 
-## 8. Topstep API Endpoints Used
-*   `/Auth/loginKey`
-*   `/Account/search`
-*   `/Contract/search`
-*   `/History/retrieveBars`
-*   `/Order/place`
-*   `/Order/search`
-*   `/Order/cancel`
-*   `/Position/search`
-*   `/Position/closeContract`
+## 10. Known Gotchas
+- Daily bars fetch uses unit=4 (day) not unit=2 with unitNumber=1440
+- `high_conviction` override (PDH/PDL) is currently unreachable due to pause logic architecture
+- Trailing stop is software-side only (moves BE locally, calls flatten_all_positions)
+- last_signals set clears daily and per-symbol on position close
+- 30s bar cache TTL means setup detection may lag by up to 30s
 
-## 9. Environment Variables
-Stored in `.env`:
-*   `TOPSTEPX_USERNAME`
-*   `TOPSTEPX_API_KEY`
-*   `TOPSTEPX_API_URL` (Optional, defaults to `https://api.topstepx.com/api`)
+## 11. Standing Protocol
+Before ANY code change: read context.md. After ANY change: update context.md, commit with descriptive message, push to git.
 
-## 10. Standing Protocol
-*   **Before any change:** Read `context.md` to understand system constraints.
-*   **After any change:** Update `context.md`, commit with descriptive message, push to git.
-
-## 11. Known Issues / Gotchas
-*   **Token Expiry:** Topstep JWTs expire. `TopstepXClient` gracefully catches 401s on endpoints (bars, positions, orders) and re-authenticates automatically.
-*   **Position Check Race Conditions:** `/Position/search` is the source of truth, but it can sometimes lag or fail. The client uses an order-based fallback search (`/Order/search`) to infer positions if the primary endpoint acts up.
-*   **Trailing Stops:** Full bracket replacement is tricky; current implementation cancels the old stop-loss order but relies on the underlying logic to track intended new levels.
-*   **News Filter Timestamps:** ForexFactory returns times in UTC, which the bot must accurately convert and localize to US/Eastern (`pytz.timezone('US/Eastern')`) to align with Topstep exchange time.
+## 12. Recent Changes Log
+- Enabled LIVE trading mode (was offline)
+- Pause instead of shutdown on max losses
+- Bar fetch caching (30s TTL)
+- Adaptive sleep (3s/10s/30s)
+- Timezone fix on current_time_bucket()
+- /Position/search primary position detection
+- cancel_and_replace_stop() method
+- Fixed daily bars to use unit=4
+- HTF 30m swing structure bias
+- PDH/PDL high-conviction detection
+- OTE Fibonacci filter (50-85%)
+- MSS 60% body displacement requirement
+- Sector correlation check restored
+- last_signals daily + per-symbol clearing
+- MYM LOOKBACK_BARS 10→20
+- BotConfig.NAME attribute
+- Lunch hour exclusion (12-1 PM ET)
+- Fixed REWARD_RISK_RATIO → RR_RATIO AttributeError
+- Fixed tf_symbols/bars_data scope bug in trailing stop
+- Fixed df_tf entry price fallback-to-0 bug
