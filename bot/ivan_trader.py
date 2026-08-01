@@ -32,7 +32,8 @@ class BaseConfig:
     TRAILING_ACTIVATION_RR = 1.0
 
 class BotConfig(BaseConfig):
-    def __init__(self, TIMEFRAME, LOOKBACK_BARS, RR_RATIO, MIN_RISK_ATR_MULTIPLIER, MAX_RISK_ATR_MULTIPLIER, MIN_FVG_ATR_MULTIPLIER, TIME_WINDOW):
+    def __init__(self, name, TIMEFRAME, LOOKBACK_BARS, RR_RATIO, MIN_RISK_ATR_MULTIPLIER, MAX_RISK_ATR_MULTIPLIER, MIN_FVG_ATR_MULTIPLIER, TIME_WINDOW):
+        self.NAME = name
         self.TIMEFRAME = TIMEFRAME
         self.LOOKBACK_BARS = LOOKBACK_BARS
         self.RR_RATIO = RR_RATIO
@@ -43,6 +44,7 @@ class BotConfig(BaseConfig):
 
 HOLY_GRAIL_CONFIGS = {
     "MNQ": BotConfig(
+        "MNQ NY Afternoon",
         TIMEFRAME=15,
         RR_RATIO=1.0,
         LOOKBACK_BARS=20,
@@ -52,6 +54,7 @@ HOLY_GRAIL_CONFIGS = {
         TIME_WINDOW={"start_h": 13, "start_m": 0, "end_h": 15, "end_m": 30}
     ),
     "MES": BotConfig(
+        "MES NY Open",
         TIMEFRAME=5,
         RR_RATIO=1.0,
         LOOKBACK_BARS=30,
@@ -61,9 +64,10 @@ HOLY_GRAIL_CONFIGS = {
         TIME_WINDOW={"start_h": 8, "start_m": 30, "end_h": 11, "end_m": 30}
     ),
     "MYM": BotConfig(
+        "MYM NY Afternoon",
         TIMEFRAME=15,
         RR_RATIO=1.5,
-        LOOKBACK_BARS=10,
+        LOOKBACK_BARS=20,
         MIN_RISK_ATR_MULTIPLIER=0.5,
         MAX_RISK_ATR_MULTIPLIER=3.0,
         MIN_FVG_ATR_MULTIPLIER=1.0,
@@ -113,10 +117,31 @@ def detect_ict_setup(df, df_30m, df_1d, symbol, config):
     htf_bias = None
     if df_30m is not None and not df_30m.empty and len(df_30m) >= 20:
         last_20_30m = df_30m.tail(20).reset_index(drop=True)
-        hh_idx = last_20_30m['high'].idxmax()
-        ll_idx = last_20_30m['low'].idxmin()
-        if hh_idx > ll_idx: htf_bias = "buy"
-        else: htf_bias = "sell"
+        # Find the last 3 swing highs and 3 swing lows on the 30m chart
+        # A swing high = higher than both neighbors; swing low = lower than both neighbors
+        swing_highs = []
+        swing_lows = []
+        for k in range(1, len(last_20_30m) - 1):
+            if last_20_30m.iloc[k]['high'] > last_20_30m.iloc[k-1]['high'] and last_20_30m.iloc[k]['high'] > last_20_30m.iloc[k+1]['high']:
+                swing_highs.append(last_20_30m.iloc[k]['high'])
+            if last_20_30m.iloc[k]['low'] < last_20_30m.iloc[k-1]['low'] and last_20_30m.iloc[k]['low'] < last_20_30m.iloc[k+1]['low']:
+                swing_lows.append(last_20_30m.iloc[k]['low'])
+        
+        # Bullish structure: last 2 swing highs are Higher Highs AND last 2 swing lows are Higher Lows
+        # Bearish structure: last 2 swing highs are Lower Highs AND last 2 swing lows are Lower Lows
+        if len(swing_highs) >= 2 and len(swing_lows) >= 2:
+            hh = swing_highs[-1] > swing_highs[-2]
+            hl = swing_lows[-1] > swing_lows[-2]
+            lh = swing_highs[-1] < swing_highs[-2]
+            ll = swing_lows[-1] < swing_lows[-2]
+            if hh and hl:
+                htf_bias = "buy"
+            elif lh and ll:
+                htf_bias = "sell"
+            else:
+                htf_bias = None  # Ranging — allow both directions
+        else:
+            htf_bias = None  # Not enough structure data
         
     # --- PDH / PDL ---
     pdh, pdl = None, None
@@ -161,11 +186,12 @@ def detect_ict_setup(df, df_30m, df_1d, symbol, config):
                             # Fibonacci OTE Filter
                             swing_low = recent_bars.loc[highest_idx:i+2, 'low'].min()
                             move_range = sweep_high - swing_low
-                            fib_618 = sweep_high - (move_range * 0.618)
-                            fib_790 = sweep_high - (move_range * 0.790)
+                            fib_500 = sweep_high - (move_range * 0.500)
+                            fib_850 = sweep_high - (move_range * 0.850)
                             
                             # Price must currently be in the OTE zone
-                            if fib_790 <= current_price <= fib_618:
+                            # OTE zone: 50%-85% retracement (standard ICT OTE 61.8-79% relaxed for polling bot latency)
+                            if fib_850 <= current_price <= fib_500:
                                 bars_since_fvg = recent_bars.iloc[i + 2:]
                                 if check_rejection(bars_since_fvg, zone_low, zone_high, "sell"):
                                     conviction = pdh is not None and abs(sweep_high - pdh) <= (0.5 * current_atr)
@@ -210,10 +236,11 @@ def detect_ict_setup(df, df_30m, df_1d, symbol, config):
                             # Fibonacci OTE Filter
                             swing_high = recent_bars.loc[lowest_idx:i+2, 'high'].max()
                             move_range = swing_high - sweep_low
-                            fib_618 = sweep_low + (move_range * 0.618)
-                            fib_790 = sweep_low + (move_range * 0.790)
+                            fib_500 = sweep_low + (move_range * 0.500)
+                            fib_850 = sweep_low + (move_range * 0.850)
                             
-                            if fib_618 <= current_price <= fib_790:
+                            # OTE zone: 50%-85% retracement (standard ICT OTE 61.8-79% relaxed for polling bot latency)
+                            if fib_500 <= current_price <= fib_850:
                                 bars_since_fvg = recent_bars.iloc[i + 2:]
                                 if check_rejection(bars_since_fvg, zone_low, zone_high, "buy"):
                                     conviction = pdl is not None and abs(sweep_low - pdl) <= (0.5 * current_atr)
@@ -273,6 +300,8 @@ def main():
                 start_of_day_balance = balance
                 # Reset tracking at start of new day
                 consecutive_losses = 0
+                last_signals.clear()
+                logger.info("🔄 Daily signal dedup set cleared for new trading day.")
                 logger.info(f"📅 New trading day ({current_date}). Starting balance: ${start_of_day_balance:.2f}")
                 
             # --- POSITION POLLING & PNL TRACKING ---
@@ -284,6 +313,8 @@ def main():
                     if not is_open:
                         logger.info(f"🔄 Topstep reports no working orders for {symbol}. Position closed!")
                         in_position[symbol] = False
+                        # Clear signals for this symbol so the same FVG zone can be re-entered after a close
+                        last_signals = {s for s in last_signals if f"-{symbol}-" not in s}
                         
                         # Track trade outcome based on balance delta
                         if balance_before_trade[symbol] is not None:
@@ -322,6 +353,8 @@ def main():
                                     if cid:
                                         topstep.cancel_orphaned_brackets(cid)
                                     in_position[symbol] = False
+                                    # Clear signals for this symbol so the same FVG zone can be re-entered after a close
+                                    last_signals = {s for s in last_signals if f"-{symbol}-" not in s}
                                     if balance_before_trade[symbol] is not None:
                                         logger.info(f"📈 Trade for {symbol} stopped at BE (${balance - balance_before_trade[symbol]:.2f}).")
                                     balance_before_trade[symbol] = None
@@ -419,7 +452,16 @@ def main():
                 if in_position[symbol]:
                     continue
                     
-                # Sector Correlation Check has been removed to allow concurrent trades
+                # Sector Correlation Check: block new trades if same sector already has an open position
+                if symbol in INSTRUMENT_CONFIG:
+                    sym_sector = INSTRUMENT_CONFIG[symbol]['sector']
+                    sector_blocked = any(
+                        in_position[other] and other in INSTRUMENT_CONFIG and
+                        INSTRUMENT_CONFIG[other]['sector'] == sym_sector
+                        for other in SYMBOLS if other != symbol
+                    )
+                    if sector_blocked:
+                        continue
                 setup = None
                 df_tf = None
                 active_config = HOLY_GRAIL_CONFIGS.get(symbol)
@@ -474,7 +516,7 @@ def main():
                             continue
                             
                         logger.info("=" * 60)
-                        logger.info(f"🚨 [LIVE] EXECUTING TRADE: {setup['side'].upper()} {setup['symbol']} | Strategy: Holy Grail")
+                        logger.info(f"🚨 [LIVE] EXECUTING TRADE: {setup['side'].upper()} {setup['symbol']} | Strategy: {active_config.NAME}")
                         logger.info(f"📝 Setup: {setup['reason']}")
                         
                         futures_ticks = int(setup['risk_points'] / tick_sz)
