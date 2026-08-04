@@ -46,8 +46,8 @@ HOLY_GRAIL_CONFIGS = {
     "MNQ": BotConfig(
         "MNQ Strategy #1",
         TIMEFRAME=10,
-        RR_RATIO=1.5,
         LOOKBACK_BARS=30,
+        RR_RATIO=1.5,
         MIN_RISK_ATR_MULTIPLIER=0.5,
         MAX_RISK_ATR_MULTIPLIER=3.0,
         MIN_FVG_ATR_MULTIPLIER=0.5,
@@ -56,8 +56,8 @@ HOLY_GRAIL_CONFIGS = {
     "MES": BotConfig(
         "MES Strategy #1",
         TIMEFRAME=3,
-        RR_RATIO=1.0,
         LOOKBACK_BARS=30,
+        RR_RATIO=1.0,
         MIN_RISK_ATR_MULTIPLIER=0.5,
         MAX_RISK_ATR_MULTIPLIER=5.0,
         MIN_FVG_ATR_MULTIPLIER=0.25,
