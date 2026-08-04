@@ -41,7 +41,7 @@ Python autonomous ICT trading bot for a $50K Topstep Combine. Uses real ICT Smar
 3. $1,450 daily profit cap → pause until tomorrow
 4. 3 consecutive losses → pause until next trading day (resumes at midnight ET)
 5. EOD liquidation at 4:45 PM ET
-6. News blackout (10 min before / 15 min after USD High Impact events via ForexFactory XML)
+6. News blackout (10 min before / 15 min after USD High Impact events via ForexFactory XML) with 10-minute fallback caching on API failure
 7. Sector correlation block (no two trades in same sector simultaneously)
 8. Pre-trade dollar risk check (balance - dollar_risk >= $48,000)
 9. Lunch hour exclusion (12:00-1:00 PM ET)
@@ -115,3 +115,4 @@ Before ANY code change: read context.md. After ANY change: update context.md, co
 - Fixed df_tf entry price fallback-to-0 bug
 - Synchronized Grid Search Optimizer with Live Bot logic (HTF bias, MSS, OTE)
 - Dynamic HTF bias structure (30m vs 4H depending on execution timeframe)
+- Added 10-minute rate-limit backoff caching to the ForexFactory news calendar to prevent 429 API spam loops

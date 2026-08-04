@@ -15,15 +15,17 @@ class NewsFilter:
         
     def fetch_events(self):
         """Fetches the ForexFactory XML and parses USD High Impact events."""
+        eastern = pytz.timezone('US/Eastern')
         try:
             resp = requests.get(self.url, headers=self.headers, timeout=10)
             if resp.status_code != 200:
                 logger.error(f"Failed to fetch economic calendar, status: {resp.status_code}")
+                # Set last_fetch to 23 hours and 50 minutes ago so we back off for 10 minutes instead of 24h
+                self.last_fetch = datetime.now(eastern) - timedelta(hours=23, minutes=50)
                 return
                 
             root = ET.fromstring(resp.content)
             events = []
-            eastern = pytz.timezone('US/Eastern')
             
             for event in root.findall("event"):
                 if event.find("country").text == "USD" and event.find("impact").text == "High":
@@ -50,6 +52,7 @@ class NewsFilter:
             
         except Exception as e:
             logger.error(f"Error fetching ForexFactory API: {e}")
+            self.last_fetch = datetime.now(eastern) - timedelta(hours=23, minutes=50)
 
     def is_news_blackout(self, current_time_est):
         """
