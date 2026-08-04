@@ -51,7 +51,7 @@ HOLY_GRAIL_CONFIGS = {
         MIN_RISK_ATR_MULTIPLIER=0.5,
         MAX_RISK_ATR_MULTIPLIER=3.0,
         MIN_FVG_ATR_MULTIPLIER=0.5,
-        TIME_WINDOW={"start_h": 9, "start_m": 30, "end_h": 16, "end_m": 0}
+        TIME_WINDOW={"start_h": 9, "start_m": 30, "end_h": 15, "end_m": 30}
     ),
     "MES": BotConfig(
         "MES Strategy #1",
@@ -61,7 +61,7 @@ HOLY_GRAIL_CONFIGS = {
         MIN_RISK_ATR_MULTIPLIER=0.5,
         MAX_RISK_ATR_MULTIPLIER=5.0,
         MIN_FVG_ATR_MULTIPLIER=0.25,
-        TIME_WINDOW={"start_h": 9, "start_m": 30, "end_h": 16, "end_m": 0}
+        TIME_WINDOW={"start_h": 9, "start_m": 30, "end_h": 15, "end_m": 30}
     )
 }
 
@@ -355,14 +355,14 @@ def main():
                 time.sleep(3600) # Sleep for an hour and check again
                 continue
 
-            # Check Topstep EOD 4:59 PM Rule (We liquidate at 4:45 PM to be safe)
-            if (et_now.hour == 16 and et_now.minute >= 45) or (et_now.hour == 17):
+            # Check Topstep EOD 4:10 PM Rule (We liquidate at 4:05 PM to be safe)
+            if (et_now.hour == 16 and et_now.minute >= 5) or (et_now.hour == 17):
                 if any_in_position:
-                    logger.critical("⚠️ EOD LIQUIDATION: 4:45 PM Hard Stop reached. Flattening all positions to avoid Topstep violation!")
+                    logger.critical("⚠️ EOD LIQUIDATION: 4:05 PM Hard Stop reached. Flattening all positions to avoid Topstep violation!")
                     if topstep.flatten_all_positions(SYMBOLS):
                         for sym in SYMBOLS:
                             in_position[sym] = False
-                logger.warning("Market is in the 5:00 PM - 6:00 PM daily maintenance window. Bot pausing until 6:00 PM ET...")
+                logger.warning("Market is in the 4:10 PM - 6:00 PM daily maintenance window. Bot pausing until 6:00 PM ET...")
                 time.sleep(300) # Sleep 5 minutes
                 continue
                 
