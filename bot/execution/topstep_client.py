@@ -415,15 +415,17 @@ class TopstepXClient:
                 payload_unit = 4
                 payload_unit_number = 1
                 payload_limit = max(count, 5)
+                days_back = count * 2
             else:
                 payload_unit = 2
                 payload_unit_number = unit_number
                 payload_limit = count
+                days_back = ((count * unit_number) / 1440) + 3
 
             payload = {
                 "contractId": contract_id,
                 "live": False,
-                "startTime": (datetime.now() - timedelta(days=7)).isoformat() + "Z",
+                "startTime": (datetime.now() - timedelta(days=days_back)).isoformat() + "Z",
                 "endTime": datetime.now().isoformat() + "Z",
                 "unit": payload_unit,
                 "unitNumber": payload_unit_number,
