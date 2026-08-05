@@ -26,7 +26,7 @@ SYMBOLS = ["MNQ", "MES"]
 
 class BaseConfig:
     # 2. Risk Management
-    CONTRACT_QTY = 2
+    CONTRACT_QTY = 4
     MAX_CONSECUTIVE_LOSSES = 3
     USE_TRAILING_STOP = False
     TRAILING_ACTIVATION_RR = 1.0
@@ -44,17 +44,17 @@ class BotConfig(BaseConfig):
 
 HOLY_GRAIL_CONFIGS = {
     "MNQ": BotConfig(
-        "MNQ Strategy #1",
-        TIMEFRAME=10,
-        LOOKBACK_BARS=30,
-        RR_RATIO=1.5,
+        "MNQ Combine Sniper",
+        TIMEFRAME=3,
+        LOOKBACK_BARS=20,
+        RR_RATIO=1.0,
         MIN_RISK_ATR_MULTIPLIER=0.5,
         MAX_RISK_ATR_MULTIPLIER=3.0,
-        MIN_FVG_ATR_MULTIPLIER=0.5,
-        TIME_WINDOW={"start_h": 9, "start_m": 30, "end_h": 15, "end_m": 30}
+        MIN_FVG_ATR_MULTIPLIER=1.0,
+        TIME_WINDOW={"start_h": 8, "start_m": 30, "end_h": 11, "end_m": 30}
     ),
     "MES": BotConfig(
-        "MES Strategy #1",
+        "MES Combine Runner",
         TIMEFRAME=3,
         LOOKBACK_BARS=20,
         RR_RATIO=1.0,
