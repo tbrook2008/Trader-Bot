@@ -14,11 +14,10 @@ class TopstepXClient:
         self.account_id = None
         self.contract_cache = {}
         self.session = requests.Session()
-
     def _post(self, endpoint, max_retries=3, **kwargs):
         """Helper to enforce timeouts and exponential backoff on all API requests."""
         import time
-        kwargs.setdefault("timeout", 10)
+        kwargs.setdefault("timeout", 45)
         
         for attempt in range(max_retries):
             try:
