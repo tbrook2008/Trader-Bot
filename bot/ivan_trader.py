@@ -45,13 +45,13 @@ class BotConfig(BaseConfig):
 HOLY_GRAIL_CONFIGS = {
     "MNQ": BotConfig(
         "MNQ Strategy #1",
-        TIMEFRAME=5,
-        LOOKBACK_BARS=20,
-        RR_RATIO=1.0,
+        TIMEFRAME=10,
+        LOOKBACK_BARS=30,
+        RR_RATIO=1.5,
         MIN_RISK_ATR_MULTIPLIER=0.5,
         MAX_RISK_ATR_MULTIPLIER=3.0,
-        MIN_FVG_ATR_MULTIPLIER=1.0,
-        TIME_WINDOW={"start_h": 8, "start_m": 30, "end_h": 11, "end_m": 30}
+        MIN_FVG_ATR_MULTIPLIER=0.5,
+        TIME_WINDOW={"start_h": 9, "start_m": 30, "end_h": 15, "end_m": 30}
     ),
     "MES": BotConfig(
         "MES Strategy #1",
