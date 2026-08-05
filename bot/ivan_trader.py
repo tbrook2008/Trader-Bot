@@ -26,7 +26,7 @@ SYMBOLS = ["MNQ", "MES"]
 
 class BaseConfig:
     # 2. Risk Management
-    CONTRACT_QTY = 1
+    CONTRACT_QTY = 2
     MAX_CONSECUTIVE_LOSSES = 3
     USE_TRAILING_STOP = False
     TRAILING_ACTIVATION_RR = 1.0
