@@ -6,6 +6,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 import logging
 import pytz
+import csv
 
 # Ensure the parent directory is in the Python path so 'from bot...' imports work
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -23,6 +24,19 @@ topstep = TopstepXClient()
 
 # Directly scan the futures symbols now!
 SYMBOLS = ["MNQ", "MES"]
+
+def log_trade_to_csv(symbol, result, pnl, balance):
+    try:
+        os.makedirs("data", exist_ok=True)
+        file_path = "data/trade_log.csv"
+        file_exists = os.path.isfile(file_path)
+        with open(file_path, "a", newline="") as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(["Timestamp", "Symbol", "Result", "PnL", "Balance"])
+            writer.writerow([datetime.now().strftime("%Y-%m-%d %H:%M:%S"), symbol, result, f"${pnl:.2f}", f"${balance:.2f}"])
+    except Exception as e:
+        logger.error(f"Failed to log trade to CSV: {e}")
 
 class BaseConfig:
     # 2. Risk Management
@@ -334,9 +348,11 @@ def main():
                             if trade_pnl < 0:
                                 consecutive_losses += 1
                                 logger.warning(f"📉 Trade for {symbol} resulted in a loss (${trade_pnl:.2f}). Consecutive losses: {consecutive_losses}")
+                                log_trade_to_csv(symbol, "LOSS", trade_pnl, balance)
                             else:
                                 consecutive_losses = 0
                                 logger.info(f"📈 Trade for {symbol} resulted in a win (${trade_pnl:.2f}). Consecutive losses reset.")
+                                log_trade_to_csv(symbol, "WIN", trade_pnl, balance)
                         balance_before_trade[symbol] = None
                         if symbol in trade_state:
                             del trade_state[symbol]

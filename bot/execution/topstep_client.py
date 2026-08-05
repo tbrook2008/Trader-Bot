@@ -72,7 +72,12 @@ class TopstepXClient:
             return
         data = resp.json()
         if data.get("accounts") and len(data["accounts"]) > 0:
-            self.account_id = data["accounts"][0]["id"]
+            # Prioritize the fresh 50k combine account
+            fresh_accounts = [acc for acc in data["accounts"] if acc.get("balance", 0) >= 49900]
+            if fresh_accounts:
+                self.account_id = fresh_accounts[0]["id"]
+            else:
+                self.account_id = data["accounts"][0]["id"]
             logger.info(f"Topstep Active Account ID set to: {self.account_id}")
 
     def get_account_balance(self):
