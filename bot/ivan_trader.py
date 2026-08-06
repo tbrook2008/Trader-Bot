@@ -48,6 +48,16 @@ def get_current_hard_floor():
         return 50000
     return floor
 
+def get_dynamic_contract_size(current_balance, hard_floor, max_contracts=4):
+    """Dynamically scales contract size based on equity buffer to prevent blowouts"""
+    buffer = current_balance - hard_floor
+    if buffer > 750:
+        return max_contracts
+    elif buffer > 400:
+        return max(1, max_contracts // 2)
+    else:
+        return 1
+
 def log_trade_to_csv(symbol, result, pnl, balance):
     try:
         os.makedirs("data", exist_ok=True)
@@ -535,9 +545,9 @@ def main():
                         point_val = INSTRUMENT_CONFIG[setup['symbol']]["point_value"] if setup['symbol'] in INSTRUMENT_CONFIG else 2.0
                         tick_sz = INSTRUMENT_CONFIG[setup['symbol']]["tick_size"] if setup['symbol'] in INSTRUMENT_CONFIG else 0.25
                         
-                        dollar_risk = setup['risk_points'] * point_val * active_config.CONTRACT_QTY
+                        dynamic_contracts = get_dynamic_contract_size(balance, hard_floor, active_config.CONTRACT_QTY)
+                        dollar_risk = setup['risk_points'] * point_val * dynamic_contracts
                         
-                        hard_floor = get_current_hard_floor()
                         if (balance - dollar_risk) < hard_floor:
                             logger.warning(f"🛡️ SAFETY PROTECT: Holy Grail signalled trade, but risking ${dollar_risk:.2f} would drop balance (${balance:.2f}) below floor (${hard_floor:.2f}). Skipping!")
                             continue
@@ -549,14 +559,22 @@ def main():
                         futures_ticks = int(setup['risk_points'] / tick_sz)
                         target_ticks = int(futures_ticks * active_config.RR_RATIO)
                         futures_ticks = max(4, futures_ticks)
-                        logger.info(f"Live Order -> Stop Loss: {int(setup['risk_points'] / tick_sz)} Ticks | Take Profit: {int(setup['risk_points'] * active_config.RR_RATIO / tick_sz)} Ticks")
+                        sl_ticks = int(setup['risk_points'] / tick_sz)
+                        tp_ticks = int(setup['risk_points'] * active_config.RR_RATIO / tick_sz)
+                        sl_ticks = max(4, sl_ticks)
+                        logger.info(f"Live Order -> Stop Loss: {sl_ticks} Ticks | Take Profit: {tp_ticks} Ticks")
                         
                         # LIVE MODE
                         logger.info(f"💰 Risk: ${dollar_risk:.2f} | R:R: 1:{active_config.RR_RATIO}")
                         
-                        if topstep.place_market_order(setup['symbol'], setup['side'], active_config.CONTRACT_QTY, 
-                                                      int(setup['risk_points'] * active_config.RR_RATIO / tick_sz), 
-                                                      int(setup['risk_points'] / tick_sz)):
+                        if dynamic_contracts < active_config.CONTRACT_QTY:
+                            logger.warning(f"🛡️ DRAWDOWN SHIELD ACTIVE: Reducing contract size from {active_config.CONTRACT_QTY} to {dynamic_contracts} to protect against liquidation limit.")
+                            
+                        logger.info(f"Submitting Topstep {setup['side'].upper()} order for {dynamic_contracts} {setup['symbol']}...")
+                        
+                        if topstep.place_market_order(setup['symbol'], setup['side'], dynamic_contracts, 
+                                                      tp_ticks, 
+                                                      sl_ticks):
                             in_position[setup['symbol']] = True
                             balance_before_trade[setup['symbol']] = balance
                             trade_state[setup['symbol']] = {
