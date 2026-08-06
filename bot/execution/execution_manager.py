@@ -2,6 +2,7 @@ import logging
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import MarketOrderRequest, TakeProfitRequest, StopLossRequest
 from alpaca.trading.enums import OrderSide, TimeInForce, OrderClass
+from bot.utils.supabase_logger import push_trade_to_supabase
 
 logger = logging.getLogger("ExecutionManager")
 
@@ -85,6 +86,19 @@ class ExecutionManager:
                 self.client.cancel_order_by_id(order.id)
                 logger.info(f"🛑 Cancelled resting order {order.id} for {symbol}")
             
+            # Extract PnL before closing
+            try:
+                pos = self.client.get_open_position(symbol)
+                pnl = float(pos.unrealized_pl)
+                entry = float(pos.avg_entry_price)
+                exit_price = float(pos.current_price)
+                side = "BUY" if pos.side.name == "LONG" else "SELL"
+                
+                # Push to Supabase Cloud
+                push_trade_to_supabase(symbol, side, entry, exit_price, pnl)
+            except Exception as e:
+                logger.warning(f"Could not log trade to Supabase before close: {e}")
+
             # Now safely liquidate the position
             self.client.close_position(symbol)
             logger.info(f"💥 EXECUTED DYNAMIC EXIT | Closed all open positions and cancelled brackets for {symbol}")
