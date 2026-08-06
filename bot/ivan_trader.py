@@ -25,6 +25,29 @@ topstep = TopstepXClient()
 # Directly scan the futures symbols now!
 SYMBOLS = ["MNQ", "MES"]
 
+def get_current_hard_floor():
+    """Calculates the Topstep Trailing Drawdown EOD floor based on historical peak balance"""
+    peak_balance = 50000.0
+    try:
+        if os.path.isfile("data/trade_log.csv"):
+            with open("data/trade_log.csv", "r") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    try:
+                        bal = float(row["Balance"].replace("$", "").replace(",", ""))
+                        if bal > peak_balance:
+                            peak_balance = bal
+                    except:
+                        pass
+    except Exception as e:
+        pass
+    
+    # EOD Drawdown trails by $2000 behind peak balance, but stops at $50,000
+    floor = peak_balance - 2000
+    if floor > 50000:
+        return 50000
+    return floor
+
 def log_trade_to_csv(symbol, result, pnl, balance):
     try:
         os.makedirs("data", exist_ok=True)
@@ -400,8 +423,9 @@ def main():
                 logger.critical(f"🎉 GOAL REACHED! Balance: ${balance:.2f}. Combine passed! Shutting down.")
                 break
                 
-            if balance <= 48000:
-                logger.critical(f"🛑 HARD FLOOR HIT. Balance: ${balance:.2f}. Shutting down to prevent violation.")
+            hard_floor = get_current_hard_floor()
+            if balance <= hard_floor:
+                logger.critical(f"🛑 HARD FLOOR HIT. Balance: ${balance:.2f} (Floor: ${hard_floor:.2f}). Shutting down to prevent violation.")
                 break
                 
             if daily_pnl >= 1450:
@@ -513,8 +537,9 @@ def main():
                         
                         dollar_risk = setup['risk_points'] * point_val * active_config.CONTRACT_QTY
                         
-                        if (balance - dollar_risk) < 48000:
-                            logger.warning(f"🛡️ SAFETY PROTECT: Holy Grail signalled trade, but risking ${dollar_risk:.2f} would drop balance (${balance:.2f}) below $48,000. Skipping!")
+                        hard_floor = get_current_hard_floor()
+                        if (balance - dollar_risk) < hard_floor:
+                            logger.warning(f"🛡️ SAFETY PROTECT: Holy Grail signalled trade, but risking ${dollar_risk:.2f} would drop balance (${balance:.2f}) below floor (${hard_floor:.2f}). Skipping!")
                             continue
                             
                         logger.info("=" * 60)
