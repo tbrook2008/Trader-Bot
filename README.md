@@ -20,14 +20,14 @@ Python autonomous ICT trading bot for a $50K Topstep Combine. Uses real ICT Smar
 
 | Symbol | NAME | TIMEFRAME | LOOKBACK_BARS | RR_RATIO | MIN_RISK_ATR | MAX_RISK_ATR | MIN_FVG_ATR | TIME_WINDOW |
 |--------|------|-----------|---------------|----------|--------------|--------------|-------------|-------------|
-| **MNQ** | MNQ NY Afternoon | 15 | 20 | 1.0 | 0.5 | 5.0 | 0.5 | 13:00 - 15:30 |
-| **MES** | MES NY Afternoon | 3 | 15 | 1.0 | 0.5 | 6.0 | 0.25 | 13:00 - 15:30 |
+| **MNQ** | MNQ NY Runner | 3 | 20 | 1.0 | 0.5 | 3.0 | 0.25 | 09:30 - 15:30 |
+| **MES** | MES Shield Sniper | 3 | 20 | 1.0 | 0.5 | 3.0 | 0.25 | 13:00 - 15:30 |
 
 ## 4. INSTRUMENT_CONFIG
 
 | Symbol | Sector | Tick Size | Tick Value | Point Value | Sniper Window |
 |--------|--------|-----------|------------|-------------|---------------|
-| **MNQ** | equity_index | 0.25 | $0.50 | $2.00 | 13:00 - 15:30 |
+| **MNQ** | equity_index | 0.25 | $0.50 | $2.00 | 09:30 - 15:30 |
 | **MES** | equity_index | 0.25 | $1.25 | $5.00 | 13:00 - 15:30 |
 | **MYM** | equity_index | 1.00 | $0.50 | $0.50 | 13:00 - 15:30 |
 | **M2K** | equity_index | 0.10 | $0.50 | $5.00 | 13:00 - 15:30 |
@@ -38,13 +38,14 @@ Python autonomous ICT trading bot for a $50K Topstep Combine. Uses real ICT Smar
 
 ## 5. Risk Management Layers (in order of precedence)
 1. $53,000 goal → permanent shutdown (combine passed)
-2. $48,000 hard floor → permanent shutdown (violation prevention)
-3. $1,450 daily profit cap → pause until tomorrow
-4. 3 consecutive losses → pause until next trading day (resumes at midnight ET)
-5. EOD liquidation at 4:45 PM ET
-6. News blackout (10 min before / 15 min after USD High Impact events via ForexFactory XML) with 10-minute fallback caching on API failure
-7. Sector correlation block (no two trades in same sector simultaneously)
-8. Pre-trade dollar risk check (balance - dollar_risk >= $48,000)
+2. Dynamic Trailing Drawdown ($2k trailing floor, caps at $50k) → permanent shutdown (violation prevention)
+3. Dynamic Drawdown Shield (Contract Scaling) → Scales contracts from 4 -> 2 -> 1 as balance approaches the trailing floor
+4. $1,450 daily profit cap → pause until tomorrow
+5. 3 consecutive losses → pause until next trading day (resumes at midnight ET)
+6. EOD liquidation at 4:45 PM ET
+7. News blackout (10 min before / 15 min after USD High Impact events via ForexFactory XML) with 10-minute fallback caching on API failure
+8. Sector correlation block (no two trades in same sector simultaneously)
+9. Pre-trade dollar risk check (balance - dollar_risk >= trailing_floor)
 9. Lunch hour exclusion (12:00-1:00 PM ET)
 10. Weekend closure (Friday 5PM - Sunday 6PM ET)
 
@@ -119,3 +120,6 @@ Before ANY code change: read context.md. After ANY change: update context.md, co
 - Added 10-minute rate-limit backoff caching to the ForexFactory news calendar to prevent 429 API spam loops
 - Integrated Supabase telemetry to push live trades to website
 - Added Entry/Exit price tracking to trade_log.csv
+- Added Dynamic Trailing Drawdown parsing to perfectly match Topstep's end-of-day trailing rule
+- Built Dynamic Drawdown Shield to safely auto-scale contracts based on buffer size
+- Optimized MES & MNQ configs for the new Shield (MNQ NY Runner & MES Shield Sniper)
