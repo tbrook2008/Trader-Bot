@@ -14,6 +14,7 @@ Python autonomous ICT trading bot for a $50K Topstep Combine. Uses real ICT Smar
 - Live order execution via /Order/place with bracket TP/SL
 - Trailing stop (software-side BE at +1R)
 - Position tracking via /Position/search primary, /Order/search fallback
+- Live Telemetry: Pushes all closed trades (including entry/exit prices) to Supabase database.
 
 ## 3. HOLY_GRAIL_CONFIGS (Per-Symbol Strategy Configs)
 
@@ -72,8 +73,8 @@ Python autonomous ICT trading bot for a $50K Topstep Combine. Uses real ICT Smar
 - `TOPSTEPX_API_URL`
 - `TOPSTEPX_USERNAME`
 - `TOPSTEPX_API_KEY`
-- `ALPACA_API_KEY`
-- `ALPACA_SECRET_KEY`
+- `SUPABASE_URL`
+- `SUPABASE_KEY`
 - `PAPER_TRADING`
 
 ## 9. Running the Bot
@@ -116,3 +117,5 @@ Before ANY code change: read context.md. After ANY change: update context.md, co
 - Synchronized Grid Search Optimizer with Live Bot logic (HTF bias, MSS, OTE)
 - Dynamic HTF bias structure (30m vs 4H depending on execution timeframe)
 - Added 10-minute rate-limit backoff caching to the ForexFactory news calendar to prevent 429 API spam loops
+- Integrated Supabase telemetry to push live trades to website
+- Added Entry/Exit price tracking to trade_log.csv

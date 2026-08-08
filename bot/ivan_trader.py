@@ -12,6 +12,7 @@ import csv
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from bot.execution.topstep_client import TopstepXClient
+from bot.utils.supabase_logger import push_trade_to_supabase
 from bot.news_filter import NewsFilter
 from bot.instrument_config import INSTRUMENT_CONFIG
 
@@ -58,7 +59,7 @@ def get_dynamic_contract_size(current_balance, hard_floor, max_contracts=4):
     else:
         return 1
 
-def log_trade_to_csv(symbol, result, pnl, balance):
+def log_trade_to_csv(symbol, side, result, pnl, balance, entry=None, exit=None):
     try:
         os.makedirs("data", exist_ok=True)
         file_path = "data/trade_log.csv"
@@ -66,8 +67,8 @@ def log_trade_to_csv(symbol, result, pnl, balance):
         with open(file_path, "a", newline="") as f:
             writer = csv.writer(f)
             if not file_exists:
-                writer.writerow(["Timestamp", "Symbol", "Result", "PnL", "Balance"])
-            writer.writerow([datetime.now().strftime("%Y-%m-%d %H:%M:%S"), symbol, result, f"${pnl:.2f}", f"${balance:.2f}"])
+                writer.writerow(["Timestamp", "Symbol", "Side", "Result", "PnL", "Balance", "Entry", "Exit"])
+            writer.writerow([datetime.now().strftime("%Y-%m-%d %H:%M:%S"), symbol, side, result, f"${pnl:.2f}", f"${balance:.2f}", entry, exit])
     except Exception as e:
         logger.error(f"Failed to log trade to CSV: {e}")
 
@@ -378,14 +379,33 @@ def main():
                         # Track trade outcome based on balance delta
                         if balance_before_trade[symbol] is not None:
                             trade_pnl = balance - balance_before_trade[symbol]
+                            
+                            entry_price = trade_state[symbol]['entry'] if symbol in trade_state else None
+                            side = trade_state[symbol]['side'] if symbol in trade_state else "BUY"
+                            contracts = trade_state[symbol].get('contracts', 1) if symbol in trade_state else 1
+                            point_val = INSTRUMENT_CONFIG[symbol]["point_value"] if symbol in INSTRUMENT_CONFIG else 2.0
+                            
+                            exit_price = None
+                            if entry_price is not None:
+                                price_diff = trade_pnl / (point_val * contracts)
+                                exit_price = entry_price + price_diff if side == "BUY" else entry_price - price_diff
+                                exit_price = round(exit_price, 2)
+                                
+                            result = "LOSS" if trade_pnl < 0 else "WIN"
+                            
                             if trade_pnl < 0:
                                 consecutive_losses += 1
                                 logger.warning(f"📉 Trade for {symbol} resulted in a loss (${trade_pnl:.2f}). Consecutive losses: {consecutive_losses}")
-                                log_trade_to_csv(symbol, "LOSS", trade_pnl, balance)
                             else:
                                 consecutive_losses = 0
                                 logger.info(f"📈 Trade for {symbol} resulted in a win (${trade_pnl:.2f}). Consecutive losses reset.")
-                                log_trade_to_csv(symbol, "WIN", trade_pnl, balance)
+                            
+                            # Log to CSV and push to Supabase
+                            log_trade_to_csv(symbol, side, result, trade_pnl, balance, entry_price, exit_price)
+                            
+                            # Push directly to Supabase via our telemetry webhook!
+                            push_trade_to_supabase(symbol, side, entry_price, exit_price, trade_pnl)
+                            
                         balance_before_trade[symbol] = None
                         if symbol in trade_state:
                             del trade_state[symbol]
@@ -581,6 +601,7 @@ def main():
                                 'entry': df_tf.iloc[-1]['close'],
                                 'side': setup['side'],
                                 'risk': setup['risk_points'],
+                                'contracts': dynamic_contracts,
                                 'be_activated': False
                             }
                             logger.info(f"✅ Trade placed successfully for {setup['symbol']}. Pre-trade balance snapshot: ${balance:.2f}")
