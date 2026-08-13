@@ -31,7 +31,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from bot.execution.topstep_client import TopstepXClient
 from bot.utils.supabase_logger import push_trade_to_supabase
-from bot.utils.discord_logger import push_trade_to_discord, push_message_to_discord
+from bot.utils.discord_logger import push_trade_to_discord, push_message_to_discord, push_hourly_summary
 from bot.news_filter import NewsFilter
 from bot.instrument_config import INSTRUMENT_CONFIG
 
@@ -375,6 +375,7 @@ def main():
     start_of_day_balance = None
     current_date = None
     trade_state = {}
+    last_discord_update_ts = 0
     
     while True:
         try:
@@ -504,6 +505,13 @@ def main():
                 logger.info(f"💵 Daily Profit Cap Reached (${daily_pnl:.2f}). Pausing until tomorrow.")
                 time.sleep(3600) # Sleep an hour, loop will re-check date
                 continue
+                
+            # Discord Hourly Heartbeat
+            current_ts = time.time()
+            if current_ts - last_discord_update_ts >= 3600:
+                active_pos = [sym for sym, in_pos in in_position.items() if in_pos]
+                push_hourly_summary(balance, daily_pnl, hard_floor, active_pos)
+                last_discord_update_ts = current_ts
                 
             if consecutive_losses >= BaseConfig.MAX_CONSECUTIVE_LOSSES:
                 logger.critical("🛑 MAXIMUM DRAWDOWN LIMIT HIT. Pausing bot until next trading day.")
