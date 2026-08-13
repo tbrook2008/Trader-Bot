@@ -3,6 +3,8 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 import pytz
 import logging
+import os
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -12,10 +14,32 @@ class NewsFilter:
         self.headers = {"User-Agent": "Mozilla/5.0"}
         self.high_impact_events = [] # list of dicts: {'time': datetime, 'title': str}
         self.last_fetch = None
+        self.cache_file = "news_cache.json"
         
     def fetch_events(self):
         """Fetches the ForexFactory XML and parses USD High Impact events."""
         eastern = pytz.timezone('US/Eastern')
+        
+        # Check local cache first to prevent 429 rate limits on process restarts
+        if os.path.exists(self.cache_file):
+            try:
+                with open(self.cache_file, "r") as f:
+                    cache_data = json.load(f)
+                cache_time = datetime.fromisoformat(cache_data["last_fetch"])
+                if (datetime.now(eastern) - cache_time).total_seconds() < 86400:
+                    events = []
+                    for e in cache_data["events"]:
+                        events.append({
+                            "time": datetime.fromisoformat(e["time"]),
+                            "title": e["title"]
+                        })
+                    self.high_impact_events = events
+                    self.last_fetch = cache_time
+                    logger.info(f"Loaded {len(self.high_impact_events)} High Impact USD events from local cache.")
+                    return
+            except Exception as e:
+                logger.error(f"Error reading news cache: {e}")
+
         try:
             resp = requests.get(self.url, headers=self.headers, timeout=10)
             if resp.status_code != 200:
@@ -48,7 +72,19 @@ class NewsFilter:
             
             self.high_impact_events = events
             self.last_fetch = datetime.now(eastern)
-            logger.info(f"Loaded {len(self.high_impact_events)} High Impact USD events for the week.")
+            
+            # Save to local cache
+            try:
+                cache_data = {
+                    "last_fetch": self.last_fetch.isoformat(),
+                    "events": [{"time": e["time"].isoformat(), "title": e["title"]} for e in events]
+                }
+                with open(self.cache_file, "w") as f:
+                    json.dump(cache_data, f)
+            except Exception as e:
+                logger.error(f"Error saving news cache: {e}")
+                
+            logger.info(f"Loaded {len(self.high_impact_events)} High Impact USD events from API.")
             
         except Exception as e:
             logger.error(f"Error fetching ForexFactory API: {e}")
