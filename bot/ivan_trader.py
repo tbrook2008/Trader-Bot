@@ -8,6 +8,24 @@ import logging
 import pytz
 import csv
 
+# --- CROSS-PLATFORM SINGLETON PID LOCK ---
+# Strictly prevent duplicate instances from running concurrently
+try:
+    if os.name == 'nt': # Windows
+        import msvcrt
+        lock_fd = open("topstep_trader.lock", 'w')
+        msvcrt.locking(lock_fd.fileno(), msvcrt.LK_NBLCK, 1)
+    else: # Mac/Linux
+        import fcntl
+        lock_fd = open("/tmp/topstep_trader.lock", 'w')
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    
+    lock_fd.write(str(os.getpid()))
+    lock_fd.flush()
+except IOError:
+    print("Another instance of the bot is already running! Exiting to prevent duplicate trades.")
+    sys.exit(1)
+
 # Ensure the parent directory is in the Python path so 'from bot...' imports work
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -55,9 +73,11 @@ def get_dynamic_contract_size(current_balance, hard_floor, max_contracts=4):
     if buffer > 750:
         return max_contracts
     elif buffer > 400:
-        return max(1, max_contracts // 2)
+        # User requested to NEVER drop below 2 contracts to avoid a slow bleed to zero
+        # when we are near the trailing drawdown limit. Keep the punch power at 2.
+        return max(2, max_contracts // 2)
     else:
-        return 1
+        return 2
 
 def log_trade_to_csv(symbol, side, result, pnl, balance, entry=None, exit=None):
     try:
@@ -97,7 +117,7 @@ HOLY_GRAIL_CONFIGS = {
         LOOKBACK_BARS=20,
         RR_RATIO=1.0,
         MIN_RISK_ATR_MULTIPLIER=0.5,
-        MAX_RISK_ATR_MULTIPLIER=3.0,
+        MAX_RISK_ATR_MULTIPLIER=1.5,
         MIN_FVG_ATR_MULTIPLIER=0.25,
         TIME_WINDOW={"start_h": 9, "start_m": 30, "end_h": 15, "end_m": 30}
     ),
@@ -107,7 +127,7 @@ HOLY_GRAIL_CONFIGS = {
         LOOKBACK_BARS=20,
         RR_RATIO=1.0,
         MIN_RISK_ATR_MULTIPLIER=0.5,
-        MAX_RISK_ATR_MULTIPLIER=3.0,
+        MAX_RISK_ATR_MULTIPLIER=1.5,
         MIN_FVG_ATR_MULTIPLIER=0.25,
         TIME_WINDOW={"start_h": 13, "start_m": 0, "end_h": 15, "end_m": 30}
     )
@@ -370,7 +390,14 @@ def main():
                 if in_position[symbol]:
                     any_in_position = True
                     is_open = topstep.get_open_positions(symbol)
+                    
+                    # Prevent race condition where API reports 0 positions immediately after order is placed
+                    time_in_trade = time.time() - trade_state.get(symbol, {}).get('time_placed', 0)
                     if not is_open:
+                        if time_in_trade < 15:
+                            logger.info(f"⏳ Waiting for API to confirm fill for {symbol} (Trade placed {int(time_in_trade)}s ago)...")
+                            continue
+                            
                         logger.info(f"🔄 Topstep reports no working orders for {symbol}. Position closed!")
                         in_position[symbol] = False
                         # Clear signals for this symbol so the same FVG zone can be re-entered after a close
@@ -602,7 +629,8 @@ def main():
                                 'side': setup['side'],
                                 'risk': setup['risk_points'],
                                 'contracts': dynamic_contracts,
-                                'be_activated': False
+                                'be_activated': False,
+                                'time_placed': time.time()
                             }
                             logger.info(f"✅ Trade placed successfully for {setup['symbol']}. Pre-trade balance snapshot: ${balance:.2f}")
             any_in_pos = any(in_position[s] for s in SYMBOLS)
