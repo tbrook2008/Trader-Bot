@@ -10,7 +10,7 @@ logger = logging.getLogger("DiscordLogger")
 def push_trade_to_discord(symbol, side, entry_price, exit_price, pnl, balance=None):
     webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
     if webhook_url:
-        webhook_url = webhook_url.strip()
+        webhook_url = webhook_url.strip().strip('"').strip("'")
     
     if not webhook_url:
         logger.debug("Discord webhook URL missing. Skipping Discord sync.")
