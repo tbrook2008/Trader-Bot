@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import urllib.request
+import urllib.error
 from datetime import datetime
 
 logger = logging.getLogger("DiscordLogger")
@@ -47,6 +48,8 @@ def push_trade_to_discord(symbol, side, entry_price, exit_price, pnl, balance=No
                 logger.info(f"🚀 Synced trade to Discord: {symbol}")
             else:
                 logger.error(f"Failed to sync to Discord: HTTP {response.status}")
+    except urllib.error.HTTPError as e:
+        logger.error(f"Discord request error (HTTP {e.code}): {e.read().decode('utf-8', errors='ignore')}")
     except Exception as e:
         logger.error(f"Discord request error: {e}")
 
@@ -73,5 +76,7 @@ def push_message_to_discord(message, title="Bot Status", color=0x0099FF):
     
     try:
         urllib.request.urlopen(req)
+    except urllib.error.HTTPError as e:
+        logger.error(f"Discord status request error (HTTP {e.code}): {e.read().decode('utf-8', errors='ignore')}")
     except Exception as e:
         logger.error(f"Discord status request error: {e}")
