@@ -78,10 +78,14 @@ Python autonomous ICT trading bot for a $50K Topstep Combine. Uses real ICT Smar
 - `SUPABASE_KEY`
 - `PAPER_TRADING`
 
-## 9. Running the Bot
-```bash
-cd ~/Desktop/topstep-trader-bot-v2
-python3 -m bot.ivan_trader
+## 9. Running the Bot (Continuous Deployment)
+The production environment for this bot is a **Windows PC**.
+We use a continuous deployment script (`auto_updater.bat`) that polls the GitHub repository every 60 seconds. When new code is pushed to the `main` branch, the script automatically downloads the code, safely kills the running bot, and restarts it with the new updates.
+
+To start the bot on the Windows node, open `cmd` and run:
+```cmd
+cd %USERPROFILE%\Desktop\topstep-trader-bot-v2
+auto_updater.bat
 ```
 
 ## 10. Known Gotchas
@@ -123,3 +127,5 @@ Before ANY code change: read context.md. After ANY change: update context.md, co
 - Added Dynamic Trailing Drawdown parsing to perfectly match Topstep's end-of-day trailing rule
 - Built Dynamic Drawdown Shield to safely auto-scale contracts based on buffer size
 - Optimized MES & MNQ configs for the new Shield (MNQ NY Runner & MES Shield Sniper)
+- **Architectural Shift**: Migrated primary production environment to Windows. Added `auto_updater.bat` for continuous deployment.
+- **Bug Fix**: Replaced Mac-specific `fcntl` singleton lock with Windows-compatible `msvcrt.locking`.

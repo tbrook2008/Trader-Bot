@@ -1,8 +1,13 @@
 # Standard Operating Procedure (SOP) for Code Changes
 
 Whenever we make any changes to this codebase, the following strict sequence of steps MUST be followed:
-1. **Make the changes:** Implement the requested code modifications.
+1. **Make the changes:** Implement the requested code modifications. Ensure all code is 100% Windows compatible (e.g. use `msvcrt` instead of `fcntl` for locking).
 2. **Test code logic:** Ensure there are no syntax errors, verify the logic runs correctly, and make sure everything is connected properly.
 3. **Run a backtest:** Execute `run_stock_test.py` or the appropriate backtest script on the VPS to verify how the changes impacted returns.
 4. **Redo documentation:** Update `README.md`, `context.md`, or inline comments to reflect the new architecture or logic.
-5. **Push changes to Git:** Commit the changes and push them to the remote GitHub repository.
+5. **Push changes to Git:** Commit the changes and push them to the remote GitHub repository at `https://github.com/tbrook2008/Trader-Bot.git` (DO NOT push to `Topstep-Trader-Bot.git` as it is archived).
+
+## Deployment & Execution Rules
+- The production environment for this bot is a **Windows PC** (the Boston Node).
+- Do not instruct the user to run `python3 -m bot.ivan_trader` directly in production.
+- Instead, the bot is continuously deployed using `auto_updater.bat`. When you push changes to GitHub, the `auto_updater.bat` script running on the Windows machine will automatically pull the changes and restart the bot.
