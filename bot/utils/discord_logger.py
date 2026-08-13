@@ -58,7 +58,7 @@ def push_trade_to_discord(symbol, side, entry_price, exit_price, pnl, balance=No
 def push_message_to_discord(message, title="Bot Status", color=0x0099FF):
     webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
     if webhook_url:
-        webhook_url = webhook_url.strip()
+        webhook_url = webhook_url.strip().strip('"').strip("'")
     
     if not webhook_url:
         return
