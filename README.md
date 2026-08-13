@@ -15,6 +15,7 @@ Python autonomous ICT trading bot for a $50K Topstep Combine. Uses real ICT Smar
 - Trailing stop (software-side BE at +1R)
 - Position tracking via /Position/search primary, /Order/search fallback
 - Live Telemetry: Pushes all closed trades (including entry/exit prices) to Supabase database.
+- Discord Alerter: Pushes instant, color-coded trade results and daily startup checks to a Discord Webhook.
 
 ## 3. HOLY_GRAIL_CONFIGS (Per-Symbol Strategy Configs)
 
@@ -76,6 +77,7 @@ Python autonomous ICT trading bot for a $50K Topstep Combine. Uses real ICT Smar
 - `TOPSTEPX_API_KEY`
 - `SUPABASE_URL`
 - `SUPABASE_KEY`
+- `DISCORD_WEBHOOK_URL`
 - `PAPER_TRADING`
 
 ## 9. Running the Bot (Continuous Deployment)
@@ -129,3 +131,4 @@ Before ANY code change: read context.md. After ANY change: update context.md, co
 - Optimized MES & MNQ configs for the new Shield (MNQ NY Runner & MES Shield Sniper)
 - **Architectural Shift**: Migrated primary production environment to Windows. Added `auto_updater.bat` for continuous deployment.
 - **Bug Fix**: Replaced Mac-specific `fcntl` singleton lock with Windows-compatible `msvcrt.locking`.
+- **Feature**: Added Discord Webhook integration for instant push notifications of trades and account balances.

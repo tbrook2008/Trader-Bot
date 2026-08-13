@@ -31,6 +31,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from bot.execution.topstep_client import TopstepXClient
 from bot.utils.supabase_logger import push_trade_to_supabase
+from bot.utils.discord_logger import push_trade_to_discord, push_message_to_discord
 from bot.news_filter import NewsFilter
 from bot.instrument_config import INSTRUMENT_CONFIG
 
@@ -383,6 +384,7 @@ def main():
                 last_signals.clear()
                 logger.info("🔄 Daily signal dedup set cleared for new trading day.")
                 logger.info(f"📅 New trading day ({current_date}). Starting balance: ${start_of_day_balance:.2f}")
+                push_message_to_discord(f"📅 New trading day ({current_date}). Starting balance: ${start_of_day_balance:.2f}", title="Day Start", color=0x00FF00)
                 
             # --- POSITION POLLING & PNL TRACKING ---
             any_in_position = False
@@ -432,6 +434,9 @@ def main():
                             
                             # Push directly to Supabase via our telemetry webhook!
                             push_trade_to_supabase(symbol, side, entry_price, exit_price, trade_pnl)
+                            
+                            # Push instantly to Discord
+                            push_trade_to_discord(symbol, side, entry_price, exit_price, trade_pnl, balance)
                             
                         balance_before_trade[symbol] = None
                         if symbol in trade_state:
