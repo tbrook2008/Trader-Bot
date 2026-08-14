@@ -388,7 +388,6 @@ def main():
     current_date = datetime.strptime(current_date_str, "%Y-%m-%d").date() if current_date_str else None
     start_of_day_balance = state.get("start_of_day_balance")
     
-    global consecutive_losses
     consecutive_losses = state.get("consecutive_losses", 0)
     
     while True:
@@ -405,7 +404,6 @@ def main():
                 current_date = et_now.date()
                 start_of_day_balance = balance
                 # Reset tracking at start of new day
-                global consecutive_losses
                 consecutive_losses = 0
                 last_signals.clear()
                 logger.info("🔄 Daily signal dedup set cleared for new trading day.")
