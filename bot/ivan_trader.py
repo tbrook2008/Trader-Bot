@@ -336,7 +336,25 @@ def detect_ict_setup(df, df_30m, df_1d, symbol, config):
     return None
 
 def get_eastern_time():
-    return datetime.now(pytz.timezone('US/Eastern'))
+    return datetime.now(pytz.utc).astimezone(pytz.timezone('US/Eastern'))
+
+STATE_FILE = "bot_state.json"
+import json
+def load_state():
+    if os.path.exists(STATE_FILE):
+        try:
+            with open(STATE_FILE, "r") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+def save_state(state):
+    try:
+        with open(STATE_FILE, "w") as f:
+            json.dump(state, f)
+    except Exception:
+        pass
 
 def main():
     global consecutive_losses, in_position, balance_before_trade
@@ -362,10 +380,16 @@ def main():
 
     news_filter = NewsFilter()
     last_signals = set()
-    start_of_day_balance = None
-    current_date = None
     trade_state = {}
     last_discord_update_ts = 0
+    
+    state = load_state()
+    current_date_str = state.get("current_date")
+    current_date = datetime.strptime(current_date_str, "%Y-%m-%d").date() if current_date_str else None
+    start_of_day_balance = state.get("start_of_day_balance")
+    
+    global consecutive_losses
+    consecutive_losses = state.get("consecutive_losses", 0)
     
     while True:
         try:
@@ -381,11 +405,18 @@ def main():
                 current_date = et_now.date()
                 start_of_day_balance = balance
                 # Reset tracking at start of new day
+                global consecutive_losses
                 consecutive_losses = 0
                 last_signals.clear()
                 logger.info("🔄 Daily signal dedup set cleared for new trading day.")
                 logger.info(f"📅 New trading day ({current_date}). Starting balance: ${start_of_day_balance:.2f}")
                 push_message_to_discord(f"📅 New trading day ({current_date}). Starting balance: ${start_of_day_balance:.2f}", title="Day Start", color=0x00FF00)
+                
+                save_state({
+                    "current_date": current_date.strftime("%Y-%m-%d"),
+                    "start_of_day_balance": start_of_day_balance,
+                    "consecutive_losses": consecutive_losses
+                })
                 
             # --- POSITION POLLING & PNL TRACKING ---
             any_in_position = False
@@ -429,6 +460,12 @@ def main():
                             else:
                                 consecutive_losses = 0
                                 logger.info(f"📈 Trade for {symbol} resulted in a win (${trade_pnl:.2f}). Consecutive losses reset.")
+                                
+                            save_state({
+                                "current_date": current_date.strftime("%Y-%m-%d") if current_date else "",
+                                "start_of_day_balance": start_of_day_balance,
+                                "consecutive_losses": consecutive_losses
+                            })
                             
                             # Log to CSV and push to Supabase
                             log_trade_to_csv(symbol, side, result, trade_pnl, balance, entry_price, exit_price)
