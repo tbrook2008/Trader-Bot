@@ -118,12 +118,12 @@ HOLY_GRAIL_CONFIGS = {
     "ES": BotConfig(
         "ES Hail Mary",
         TIMEFRAME=3,
-        LOOKBACK_BARS=20,
+        LOOKBACK_BARS=40,
         RR_RATIO=1.0,
         MIN_RISK_ATR_MULTIPLIER=0.5,
-        MAX_RISK_ATR_MULTIPLIER=3.0,
-        MIN_FVG_ATR_MULTIPLIER=0.25,
-        TIME_WINDOW={"start_h": 13, "start_m": 0, "end_h": 15, "end_m": 30}
+        MAX_RISK_ATR_MULTIPLIER=5.0,
+        MIN_FVG_ATR_MULTIPLIER=0.5,
+        TIME_WINDOW={"start_h": 9, "start_m": 30, "end_h": 15, "end_m": 30}
     )
 }
 
