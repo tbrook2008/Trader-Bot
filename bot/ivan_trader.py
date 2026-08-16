@@ -43,7 +43,7 @@ load_dotenv()
 topstep = TopstepXClient()
 
 # Directly scan the futures symbols now!
-SYMBOLS = ["MNQ", "MES"]
+SYMBOLS = ["NQ", "ES"]
 
 def get_current_hard_floor():
     """Calculates the Topstep Trailing Drawdown EOD floor based on historical peak balance"""
@@ -70,15 +70,8 @@ def get_current_hard_floor():
 
 def get_dynamic_contract_size(current_balance, hard_floor, max_contracts=4):
     """Dynamically scales contract size based on equity buffer to prevent blowouts"""
-    buffer = current_balance - hard_floor
-    if buffer > 750:
-        return max_contracts
-    elif buffer > 400:
-        # User requested to NEVER drop below 2 contracts to avoid a slow bleed to zero
-        # when we are near the trailing drawdown limit. Keep the punch power at 2.
-        return max(2, max_contracts // 2)
-    else:
-        return 2
+    # HAIL MARY: Hard lock to exactly 1 contract. Never scale up.
+    return 1
 
 def log_trade_to_csv(symbol, side, result, pnl, balance, entry=None, exit=None):
     try:
@@ -112,23 +105,23 @@ class BotConfig(BaseConfig):
         self.TIME_WINDOW = TIME_WINDOW
 
 HOLY_GRAIL_CONFIGS = {
-    "MNQ": BotConfig(
-        "MNQ NY Runner",
+    "NQ": BotConfig(
+        "NQ Hail Mary",
         TIMEFRAME=3,
         LOOKBACK_BARS=20,
         RR_RATIO=1.0,
         MIN_RISK_ATR_MULTIPLIER=0.5,
-        MAX_RISK_ATR_MULTIPLIER=1.5,
+        MAX_RISK_ATR_MULTIPLIER=3.0,
         MIN_FVG_ATR_MULTIPLIER=0.25,
-        TIME_WINDOW={"start_h": 9, "start_m": 30, "end_h": 15, "end_m": 30}
+        TIME_WINDOW={"start_h": 13, "start_m": 0, "end_h": 15, "end_m": 30}
     ),
-    "MES": BotConfig(
-        "MES Shield Sniper",
+    "ES": BotConfig(
+        "ES Hail Mary",
         TIMEFRAME=3,
         LOOKBACK_BARS=20,
         RR_RATIO=1.0,
         MIN_RISK_ATR_MULTIPLIER=0.5,
-        MAX_RISK_ATR_MULTIPLIER=1.5,
+        MAX_RISK_ATR_MULTIPLIER=3.0,
         MIN_FVG_ATR_MULTIPLIER=0.25,
         TIME_WINDOW={"start_h": 13, "start_m": 0, "end_h": 15, "end_m": 30}
     )
@@ -640,6 +633,12 @@ def main():
                         point_val = INSTRUMENT_CONFIG[setup['symbol']]["point_value"] if setup['symbol'] in INSTRUMENT_CONFIG else 2.0
                         tick_sz = INSTRUMENT_CONFIG[setup['symbol']]["tick_size"] if setup['symbol'] in INSTRUMENT_CONFIG else 0.25
                         
+                        # HAIL MARY: Hard cap stop loss points
+                        max_sl_points = 15 if setup['symbol'] == "NQ" else 5
+                        if setup['risk_points'] > max_sl_points:
+                            logger.warning(f"🏈 HAIL MARY FILTER: Risk ({setup['risk_points']:.2f} pts) exceeds {max_sl_points} pt max for {setup['symbol']}. Skipping trade!")
+                            continue
+                            
                         dynamic_contracts = get_dynamic_contract_size(balance, hard_floor, active_config.CONTRACT_QTY)
                         dollar_risk = setup['risk_points'] * point_val * dynamic_contracts
                         
