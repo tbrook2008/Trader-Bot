@@ -637,6 +637,7 @@ def main():
                         max_sl_points = 15 if setup['symbol'] == "NQ" else 5
                         if setup['risk_points'] > max_sl_points:
                             logger.warning(f"🏈 HAIL MARY FILTER: Risk ({setup['risk_points']:.2f} pts) exceeds {max_sl_points} pt max for {setup['symbol']}. Skipping trade!")
+                            push_message_to_discord(f"🛡️ **Trade Skipped ({setup['symbol']}):** Perfect setup found, but the structural stop loss was **{setup['risk_points']:.2f} points** (Max Allowed: {max_sl_points}). Skipping to protect the $1,000 DLL.", title="Hail Mary Shield Active", color=0xFFA500)
                             continue
                             
                         dynamic_contracts = get_dynamic_contract_size(balance, hard_floor, active_config.CONTRACT_QTY)
@@ -653,6 +654,7 @@ def main():
                             
                         if dollar_risk > max_allowed_risk:
                             logger.warning(f"🛡️ SAFETY PROTECT: Even with 1 contract, risk (${dollar_risk:.2f}) exceeds our remaining daily loss buffer (${max_allowed_risk:.2f}). Skipping trade to protect Combine!")
+                            push_message_to_discord(f"🛡️ **Trade Skipped ({setup['symbol']}):** Risking **${dollar_risk:.2f}** would violate our remaining Daily Loss Limit buffer of ${max_allowed_risk:.2f}. Skipping to protect Combine.", title="DLL Shield Active", color=0xFF0000)
                             continue
                         
                         if (balance - dollar_risk) < hard_floor:
