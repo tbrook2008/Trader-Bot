@@ -643,6 +643,19 @@ def main():
                         dynamic_contracts = get_dynamic_contract_size(balance, hard_floor, active_config.CONTRACT_QTY)
                         dollar_risk = setup['risk_points'] * point_val * dynamic_contracts
                         
+                        # PROTECT TOPSTEP DAILY LOSS LIMIT ($1000)
+                        # We use 950 to leave a $50 margin for slippage/commissions
+                        max_allowed_risk = min(balance - hard_floor, 950 + daily_pnl)
+                        
+                        # Scale down contracts if risk exceeds our allowable buffer
+                        while dollar_risk > max_allowed_risk and dynamic_contracts > 1:
+                            dynamic_contracts -= 1
+                            dollar_risk = setup['risk_points'] * point_val * dynamic_contracts
+                            
+                        if dollar_risk > max_allowed_risk:
+                            logger.warning(f"🛡️ SAFETY PROTECT: Even with 1 contract, risk (${dollar_risk:.2f}) exceeds our remaining daily loss buffer (${max_allowed_risk:.2f}). Skipping trade to protect Combine!")
+                            continue
+                        
                         if (balance - dollar_risk) < hard_floor:
                             logger.warning(f"🛡️ SAFETY PROTECT: Holy Grail signalled trade, but risking ${dollar_risk:.2f} would drop balance (${balance:.2f}) below floor (${hard_floor:.2f}). Skipping!")
                             continue
