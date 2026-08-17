@@ -425,8 +425,6 @@ def main():
                             
                         logger.info(f"🔄 Topstep reports no working orders for {symbol}. Position closed!")
                         in_position[symbol] = False
-                        # Clear signals for this symbol so the same FVG zone can be re-entered after a close
-                        last_signals = {s for s in last_signals if f"-{symbol}-" not in s}
                         
                         # Track trade outcome based on balance delta
                         if balance_before_trade[symbol] is not None:
