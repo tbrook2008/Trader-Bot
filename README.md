@@ -138,3 +138,7 @@ Before ANY code change: read context.md. After ANY change: update context.md, co
 - **Dynamic Risk Scaling**: Evaluates buffer over hard floor and trades up to 4 Micro contracts.
 - **State Persistence**: Serializes state to `bot_state.json` to prevent duplicate signals across restarts (Machine Gun Re-Entry Prevention).
 - **Rogue Position Detection**: Polls Topstep API out-of-band to catch missing fills or manually executed trades that could desync the state engine.
+
+### Supabase Telemetry
+- All closed trades are automatically synced to the `trade_history` table in Supabase.
+- The telemetry payload includes the asset, side, entry/exit prices, net PnL, and the **current account balance** to allow remote monitoring without querying the Topstep API.

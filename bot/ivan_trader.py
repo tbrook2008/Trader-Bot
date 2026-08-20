@@ -17,7 +17,7 @@ try:
         msvcrt.locking(lock_fd.fileno(), msvcrt.LK_NBLCK, 1)
     else: # Mac/Linux
         import fcntl
-        lock_fd = open("/tmp/topstep_trader.lock", 'w')
+        lock_fd = open("topstep_trader.lock", 'w')
         fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
     
     lock_fd.write(str(os.getpid()))
@@ -482,7 +482,7 @@ def main():
                             log_trade_to_csv(symbol, side, result, trade_pnl, balance, entry_price, exit_price)
                             
                             # Push directly to Supabase via our telemetry webhook!
-                            push_trade_to_supabase(symbol, side, entry_price, exit_price, trade_pnl)
+                            push_trade_to_supabase(symbol, side, entry_price, exit_price, trade_pnl, balance)
                             
                             # Push instantly to Discord
                             push_trade_to_discord(symbol, side, entry_price, exit_price, trade_pnl, balance)

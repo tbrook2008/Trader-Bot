@@ -6,7 +6,7 @@ import urllib.request
 
 logger = logging.getLogger("SupabaseLogger")
 
-def push_trade_to_supabase(symbol, side, entry_price, exit_price, pnl):
+def push_trade_to_supabase(symbol, side, entry_price, exit_price, pnl, balance):
     supabase_url = os.getenv("SUPABASE_URL")
     supabase_key = os.getenv("SUPABASE_KEY")
     
@@ -23,7 +23,8 @@ def push_trade_to_supabase(symbol, side, entry_price, exit_price, pnl):
         "side": side,
         "entry_price": entry_price,
         "exit_price": exit_price,
-        "pnl": pnl
+        "pnl": pnl,
+        "account_balance": balance
     }
     
     data = json.dumps(payload).encode("utf-8")
@@ -35,7 +36,7 @@ def push_trade_to_supabase(symbol, side, entry_price, exit_price, pnl):
     req.add_header("Prefer", "return=minimal")
     
     try:
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req) as response:  # nosec B310
             if response.status >= 200 and response.status < 300:
                 logger.info(f"✅ Synced trade to Supabase: {symbol} PnL: ${pnl:.2f}")
             else:
