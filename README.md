@@ -132,3 +132,9 @@ Before ANY code change: read context.md. After ANY change: update context.md, co
 - **Architectural Shift**: Migrated primary production environment to Windows. Added `auto_updater.bat` for continuous deployment.
 - **Bug Fix**: Replaced Mac-specific `fcntl` singleton lock with Windows-compatible `msvcrt.locking`.
 - **Feature**: Added Discord Webhook integration for instant push notifications of trades and account balances.
+# Automated Execution Bot V2
+
+## Features
+- **Dynamic Risk Scaling**: Evaluates buffer over hard floor and trades up to 4 Micro contracts.
+- **State Persistence**: Serializes state to `bot_state.json` to prevent duplicate signals across restarts (Machine Gun Re-Entry Prevention).
+- **Rogue Position Detection**: Polls Topstep API out-of-band to catch missing fills or manually executed trades that could desync the state engine.

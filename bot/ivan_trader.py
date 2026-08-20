@@ -388,9 +388,10 @@ def main():
     current_date = datetime.strptime(current_date_str, "%Y-%m-%d").date() if current_date_str else None
     start_of_day_balance = state.get("start_of_day_balance")
     
-    consecutive_losses = state.get("consecutive_losses", 0)
     
-    while True:
+    consecutive_losses = state.get("consecutive_losses", 0)
+    last_signals = set(state.get("last_signals", []))
+while True:
         try:
             # 1. Account Equity & Goal Checks
             balance = topstep.get_account_balance()
@@ -413,15 +414,28 @@ def main():
                 save_state({
                     "current_date": current_date.strftime("%Y-%m-%d"),
                     "start_of_day_balance": start_of_day_balance,
-                    "consecutive_losses": consecutive_losses
+                    "consecutive_losses": consecutive_losses,
+                    "last_signals": list(last_signals)
                 })
                 
             # --- POSITION POLLING & PNL TRACKING ---
             any_in_position = False
             for symbol in SYMBOLS:
+                try:
+                    is_open = topstep.get_open_positions(symbol)
+                except Exception as e:
+                    logger.warning(f"Failed to check open positions for {symbol}: {e}")
+                    is_open = in_position[symbol] # Fallback to our last known state
+
+                if is_open and not in_position[symbol]:
+                    logger.warning(f"⚠️ ROGUE OR DESYNCED POSITION DETECTED for {symbol}! Reconciling tracking state.")
+                    in_position[symbol] = True
+                    if balance_before_trade[symbol] is None:
+                        balance_before_trade[symbol] = balance
+                    # NOTE: We can't perfectly reconstruct trade_state, so PnL tracking might be slightly skewed until closed.
+
                 if in_position[symbol]:
                     any_in_position = True
-                    is_open = topstep.get_open_positions(symbol)
                     
                     # Prevent race condition where API reports 0 positions immediately after order is placed
                     time_in_trade = time.time() - trade_state.get(symbol, {}).get('time_placed', 0)
@@ -460,7 +474,8 @@ def main():
                             save_state({
                                 "current_date": current_date.strftime("%Y-%m-%d") if current_date else "",
                                 "start_of_day_balance": start_of_day_balance,
-                                "consecutive_losses": consecutive_losses
+                                "consecutive_losses": consecutive_losses,
+                                "last_signals": list(last_signals)
                             })
                             
                             # Log to CSV and push to Supabase
@@ -629,6 +644,12 @@ def main():
                     
                     if signal_hash not in last_signals:
                         last_signals.add(signal_hash)
+                        save_state({
+                            "current_date": current_date.strftime("%Y-%m-%d") if current_date else "",
+                            "start_of_day_balance": start_of_day_balance,
+                            "consecutive_losses": consecutive_losses,
+                            "last_signals": list(last_signals)
+                        })
                         
                         if consecutive_losses >= 3 and not setup.get('high_conviction'):
                             logger.warning(f"🛑 Max daily losses reached (3). Setup lacked high conviction (PDH/PDL). Skipping {symbol}.")
