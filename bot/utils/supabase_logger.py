@@ -23,8 +23,7 @@ def push_trade_to_supabase(symbol, side, entry_price, exit_price, pnl, balance):
         "side": side,
         "entry_price": entry_price,
         "exit_price": exit_price,
-        "pnl": pnl,
-        "account_balance": balance
+        "pnl": pnl
     }
     
     data = json.dumps(payload).encode("utf-8")
