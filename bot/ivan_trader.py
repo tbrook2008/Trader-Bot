@@ -391,7 +391,7 @@ def main():
     
     consecutive_losses = state.get("consecutive_losses", 0)
     last_signals = set(state.get("last_signals", []))
-while True:
+    while True:
         try:
             # 1. Account Equity & Goal Checks
             balance = topstep.get_account_balance()
