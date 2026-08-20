@@ -43,7 +43,7 @@ load_dotenv()
 topstep = TopstepXClient()
 
 # Directly scan the futures symbols now!
-SYMBOLS = ["NQ", "ES"]
+SYMBOLS = ["MNQ", "MES"]
 
 def get_current_hard_floor():
     """Calculates the Topstep Trailing Drawdown EOD floor based on historical peak balance"""
@@ -70,8 +70,15 @@ def get_current_hard_floor():
 
 def get_dynamic_contract_size(current_balance, hard_floor, max_contracts=4):
     """Dynamically scales contract size based on equity buffer to prevent blowouts"""
-    # HAIL MARY: Hard lock to exactly 1 contract. Never scale up.
-    return 1
+    buffer = current_balance - hard_floor
+    if buffer >= 1500:
+        return min(4, max_contracts)
+    elif buffer >= 1000:
+        return min(3, max_contracts)
+    elif buffer >= 500:
+        return min(2, max_contracts)
+    else:
+        return 1
 
 def log_trade_to_csv(symbol, side, result, pnl, balance, entry=None, exit=None):
     try:
@@ -105,8 +112,8 @@ class BotConfig(BaseConfig):
         self.TIME_WINDOW = TIME_WINDOW
 
 HOLY_GRAIL_CONFIGS = {
-    "NQ": BotConfig(
-        "NQ Hail Mary",
+    "MNQ": BotConfig(
+        "MNQ Holy Grail",
         TIMEFRAME=3,
         LOOKBACK_BARS=20,
         RR_RATIO=1.0,
@@ -115,8 +122,8 @@ HOLY_GRAIL_CONFIGS = {
         MIN_FVG_ATR_MULTIPLIER=0.25,
         TIME_WINDOW={"start_h": 13, "start_m": 0, "end_h": 15, "end_m": 30}
     ),
-    "ES": BotConfig(
-        "ES Hail Mary",
+    "MES": BotConfig(
+        "MES Holy Grail",
         TIMEFRAME=3,
         LOOKBACK_BARS=40,
         RR_RATIO=1.0,
@@ -630,14 +637,6 @@ def main():
                         # Dynamic risk math based on INSTRUMENT_CONFIG
                         point_val = INSTRUMENT_CONFIG[setup['symbol']]["point_value"] if setup['symbol'] in INSTRUMENT_CONFIG else 2.0
                         tick_sz = INSTRUMENT_CONFIG[setup['symbol']]["tick_size"] if setup['symbol'] in INSTRUMENT_CONFIG else 0.25
-                        
-                        # HAIL MARY: Hard cap stop loss points
-                        max_sl_points = 15 if setup['symbol'] == "NQ" else 5
-                        if setup['risk_points'] > max_sl_points:
-                            logger.warning(f"🏈 HAIL MARY FILTER: Risk ({setup['risk_points']:.2f} pts) exceeds {max_sl_points} pt max for {setup['symbol']}. Skipping trade!")
-                            push_message_to_discord(f"🛡️ **Trade Skipped ({setup['symbol']}):** Perfect setup found, but the structural stop loss was **{setup['risk_points']:.2f} points** (Max Allowed: {max_sl_points}). Skipping to protect the $1,000 DLL.", title="Hail Mary Shield Active", color=0xFFA500)
-                            continue
-                            
                         dynamic_contracts = get_dynamic_contract_size(balance, hard_floor, active_config.CONTRACT_QTY)
                         dollar_risk = setup['risk_points'] * point_val * dynamic_contracts
                         
