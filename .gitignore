@@ -8,3 +8,5 @@ data/
 .DS_Store
 Thumbs.db
 archive/
+bot_state.json
+scratch/
