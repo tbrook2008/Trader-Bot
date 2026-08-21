@@ -66,8 +66,9 @@ def get_dynamic_contract_size(current_balance, hard_floor, max_contracts=4):
 
 def log_trade_to_csv(symbol, side, result, pnl, balance, entry=None, exit=None):
     try:
-        os.makedirs("data", exist_ok=True)
-        file_path = "data/trade_log.csv"
+        data_dir = os.path.join(os.path.dirname(BASE_DIR), "data")
+        os.makedirs(data_dir, exist_ok=True)
+        file_path = os.path.join(data_dir, "trade_log.csv")
         file_exists = os.path.isfile(file_path)
         with open(file_path, "a", newline="") as f:
             writer = csv.writer(f)
@@ -337,10 +338,13 @@ def load_state():
 
 def save_state(state):
     try:
-        with open(STATE_FILE, "w") as f:
+        tmp = STATE_FILE + ".tmp"
+        with open(tmp, 'w') as f:
             json.dump(state, f)
-    except Exception:
-        pass
+        os.replace(tmp, STATE_FILE)
+    except Exception as e:
+        logger.error(f"Failed to save state: {e}")
+        push_message_to_discord(f"■■ STATE SAVE FAILED: {e}", title="State Persistence Failure", color=0xFF0000)
 
 def main():
     global consecutive_losses, in_position, balance_before_trade
@@ -435,7 +439,9 @@ def main():
                         
                         # Track trade outcome based on balance delta
                         if balance_before_trade[symbol] is not None:
-                            trade_pnl = balance - balance_before_trade[symbol]
+                            balance_at_close = topstep.get_account_balance()
+                            trade_pnl = balance_at_close - balance_before_trade[symbol]
+                            balance = balance_at_close  # Update main loop balance immediately
                             
                             entry_price = trade_state[symbol]['entry'] if symbol in trade_state else None
                             side = trade_state[symbol]['side'] if symbol in trade_state else "BUY"
@@ -657,9 +663,9 @@ def main():
                         while dollar_risk > max_allowed_risk and dynamic_contracts > 1:
                             dynamic_contracts -= 1
                             sl_ticks = max(4, int(setup['risk_points'] / tick_sz))
-                        tp_ticks = int(setup['risk_points'] * active_config.RR_RATIO / tick_sz)
-                        actual_risk_points = sl_ticks * tick_sz
-                        dollar_risk = actual_risk_points * point_val * dynamic_contracts
+                            tp_ticks = int(setup['risk_points'] * active_config.RR_RATIO / tick_sz)
+                            actual_risk_points = sl_ticks * tick_sz
+                            dollar_risk = actual_risk_points * point_val * dynamic_contracts
                             
                         if dollar_risk > max_allowed_risk:
                             logger.warning(f"🛡️ SAFETY PROTECT: Even with 1 contract, risk (${dollar_risk:.2f}) exceeds our remaining daily loss buffer (${max_allowed_risk:.2f}). Skipping trade to protect Combine!")

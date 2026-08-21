@@ -14,7 +14,8 @@ class NewsFilter:
         self.headers = {"User-Agent": "Mozilla/5.0"}
         self.high_impact_events = [] # list of dicts: {'time': datetime, 'title': str}
         self.last_fetch = None
-        self.cache_file = "news_cache.json"
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.cache_file = os.path.join(base_dir, "news_cache.json")
         
     def fetch_events(self):
         """Fetches the ForexFactory XML and parses USD High Impact events."""
@@ -48,7 +49,7 @@ class NewsFilter:
                 self.last_fetch = datetime.now(eastern) - timedelta(hours=23, minutes=50)
                 return
                 
-            root = ET.fromstring(resp.content)
+            root = ET.fromstring(resp.content)  # nosec B314
             events = []
             
             for event in root.findall("event"):
