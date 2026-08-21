@@ -1,3 +1,4 @@
+from bot.utils.discord_logger import push_message_to_discord
 import os
 import json
 import logging
@@ -42,3 +43,4 @@ def push_trade_to_supabase(symbol, side, entry_price, exit_price, pnl, balance):
                 logger.error(f"Failed to sync trade to Supabase: HTTP {response.status}")
     except Exception as e:
         logger.error(f"Supabase request error: {e}")
+        push_message_to_discord(f"■■ SUPABASE WRITE FAILED: {e}", title="Database Error", color=0xFF0000)

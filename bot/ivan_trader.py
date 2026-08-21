@@ -45,28 +45,12 @@ topstep = TopstepXClient()
 # Directly scan the futures symbols now!
 SYMBOLS = ["MNQ", "MES"]
 
-def get_current_hard_floor():
+def get_current_hard_floor(current_balance, state):
     """Calculates the Topstep Trailing Drawdown EOD floor based on historical peak balance"""
-    peak_balance = 50000.0
-    try:
-        if os.path.isfile("data/trade_log.csv"):
-            with open("data/trade_log.csv", "r") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    try:
-                        bal = float(row["Balance"].replace("$", "").replace(",", ""))
-                        if bal > peak_balance:
-                            peak_balance = bal
-                    except:
-                        pass
-    except Exception as e:
-        pass
-    
-    # EOD Drawdown trails by $2000 behind peak balance, but stops at $50,000
-    floor = peak_balance - 2000
-    if floor > 50000:
-        return 50000
-    return floor
+    peak = max(state.get("peak_balance", 50000.0), current_balance)
+    state["peak_balance"] = peak
+    floor = min(peak - 2000, 50000)
+    return floor, state
 
 def get_dynamic_contract_size(current_balance, hard_floor, max_contracts=4):
     """Dynamically scales contract size based on equity buffer to prevent blowouts"""
@@ -92,6 +76,7 @@ def log_trade_to_csv(symbol, side, result, pnl, balance, entry=None, exit=None):
             writer.writerow([datetime.now().strftime("%Y-%m-%d %H:%M:%S"), symbol, side, result, f"${pnl:.2f}", f"${balance:.2f}", entry, exit])
     except Exception as e:
         logger.error(f"Failed to log trade to CSV: {e}")
+        push_message_to_discord(f"■■ CSV WRITE FAILED: {e}", title="Persistence Error", color=0xFF0000)
 
 class BaseConfig:
     # 2. Risk Management
@@ -338,7 +323,8 @@ def detect_ict_setup(df, df_30m, df_1d, symbol, config):
 def get_eastern_time():
     return datetime.now(pytz.utc).astimezone(pytz.timezone('US/Eastern'))
 
-STATE_FILE = "bot_state.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATE_FILE = os.path.join(BASE_DIR, "bot_state.json")
 import json
 def load_state():
     if os.path.exists(STATE_FILE):
@@ -534,7 +520,8 @@ def main():
                 logger.critical(f"🎉 GOAL REACHED! Balance: ${balance:.2f}. Combine passed! Shutting down.")
                 break
                 
-            hard_floor = get_current_hard_floor()
+            hard_floor, state = get_current_hard_floor(balance, state)
+            save_state(state)
             if balance <= hard_floor:
                 logger.critical(f"🛑 HARD FLOOR HIT. Balance: ${balance:.2f} (Floor: ${hard_floor:.2f}). Shutting down to prevent violation.")
                 break
@@ -651,15 +638,16 @@ def main():
                             "last_signals": list(last_signals)
                         })
                         
-                        if consecutive_losses >= 3 and not setup.get('high_conviction'):
-                            logger.warning(f"🛑 Max daily losses reached (3). Setup lacked high conviction (PDH/PDL). Skipping {symbol}.")
-                            continue
+
                             
                         # Dynamic risk math based on INSTRUMENT_CONFIG
                         point_val = INSTRUMENT_CONFIG[setup['symbol']]["point_value"] if setup['symbol'] in INSTRUMENT_CONFIG else 2.0
                         tick_sz = INSTRUMENT_CONFIG[setup['symbol']]["tick_size"] if setup['symbol'] in INSTRUMENT_CONFIG else 0.25
                         dynamic_contracts = get_dynamic_contract_size(balance, hard_floor, active_config.CONTRACT_QTY)
-                        dollar_risk = setup['risk_points'] * point_val * dynamic_contracts
+                        sl_ticks = max(4, int(setup['risk_points'] / tick_sz))
+                        tp_ticks = int(setup['risk_points'] * active_config.RR_RATIO / tick_sz)
+                        actual_risk_points = sl_ticks * tick_sz
+                        dollar_risk = actual_risk_points * point_val * dynamic_contracts
                         
                         # PROTECT TOPSTEP DAILY LOSS LIMIT ($1000)
                         # We use 950 to leave a $50 margin for slippage/commissions
@@ -668,7 +656,10 @@ def main():
                         # Scale down contracts if risk exceeds our allowable buffer
                         while dollar_risk > max_allowed_risk and dynamic_contracts > 1:
                             dynamic_contracts -= 1
-                            dollar_risk = setup['risk_points'] * point_val * dynamic_contracts
+                            sl_ticks = max(4, int(setup['risk_points'] / tick_sz))
+                        tp_ticks = int(setup['risk_points'] * active_config.RR_RATIO / tick_sz)
+                        actual_risk_points = sl_ticks * tick_sz
+                        dollar_risk = actual_risk_points * point_val * dynamic_contracts
                             
                         if dollar_risk > max_allowed_risk:
                             logger.warning(f"🛡️ SAFETY PROTECT: Even with 1 contract, risk (${dollar_risk:.2f}) exceeds our remaining daily loss buffer (${max_allowed_risk:.2f}). Skipping trade to protect Combine!")
@@ -683,12 +674,7 @@ def main():
                         logger.info(f"🚨 [LIVE] EXECUTING TRADE: {setup['side'].upper()} {setup['symbol']} | Strategy: {active_config.NAME}")
                         logger.info(f"📝 Setup: {setup['reason']}")
                         
-                        futures_ticks = int(setup['risk_points'] / tick_sz)
-                        target_ticks = int(futures_ticks * active_config.RR_RATIO)
-                        futures_ticks = max(4, futures_ticks)
-                        sl_ticks = int(setup['risk_points'] / tick_sz)
-                        tp_ticks = int(setup['risk_points'] * active_config.RR_RATIO / tick_sz)
-                        sl_ticks = max(4, sl_ticks)
+
                         logger.info(f"Live Order -> Stop Loss: {sl_ticks} Ticks | Take Profit: {tp_ticks} Ticks")
                         
                         # LIVE MODE
